@@ -1,14 +1,17 @@
-boto3
-botocore
-awscli
-opensearch-py
-requests-aws4auth
-pyyaml
-retrying
-pandas
+# 로컬 개발 및 배포 스크립트용 의존성
+# Lambda 런타임용은 requirements-lambda.txt 참조
+
+# AWS SDK
+boto3>=1.34.0
+botocore>=1.34.0
+
+# Strands Agents
 strands-agents
 strands-agents-tools
-streamlit
-pillow
+
+# Core dependencies
+pydantic>=2.0.0
+pyyaml
+
+# Agent Core (배포용)
 bedrock-agentcore-starter-toolkit
-pydantic

@@ -1,0 +1,9 @@
+# Lambda Runtime용 최소 의존성
+# boto3는 Lambda에 기본 포함되어 있음
+
+# Strands Agents
+strands-agents
+strands-agents-tools
+
+# Core dependencies
+pydantic>=2.0.0
