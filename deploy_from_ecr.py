@@ -24,7 +24,9 @@ account_id = boto_session.client('sts').get_caller_identity()['Account']
 
 # ECR 설정
 ECR_REPOSITORY = "diary-orchestrator-agent"
-IMAGE_TAG = "latest"
+# 환경변수에서 이미지 태그 가져오기 (GitHub Actions에서 설정)
+# 없으면 'latest' 사용
+IMAGE_TAG = os.environ.get('IMAGE_TAG', 'latest')
 
 # Agent 설정
 AGENT_NAME = "diary_orchestrator_agent"
@@ -41,6 +43,7 @@ print("=" * 60)
 print("🚀 Agent Core Runtime 배포 시작")
 print("=" * 60)
 print(f"ECR Image URI: {ecr_image_uri}")
+print(f"Image Tag: {IMAGE_TAG}")
 print(f"Agent Name: {AGENT_NAME}")
 print(f"Region: {region}")
 print("=" * 60)
@@ -74,6 +77,7 @@ try:
     print(f"Agent Name: {AGENT_NAME}")
     print(f"Agent Runtime ARN: {launch_result.agent_arn}")
     print(f"Image URI: {ecr_image_uri}")
+    print(f"Image Tag: {IMAGE_TAG}")
     print("=" * 60)
     
 except Exception as e:
