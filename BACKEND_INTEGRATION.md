@@ -27,6 +27,15 @@ diary_orchestrator_agent-90S9ctAFht
 
 ## 직접 호출 방법 (권장)
 
+### ⚠️ 중요: boto3 버전 확인
+
+```bash
+pip install --upgrade boto3
+pip show boto3  # 최신 버전 확인
+```
+
+`bedrock-agentcore` 클라이언트는 최신 boto3에서만 지원됩니다.
+
 ### 기본 사용법
 
 ```python
@@ -34,7 +43,7 @@ import boto3
 import json
 import uuid
 
-# Bedrock AgentCore 클라이언트 초기화
+# ✅ 올바른 클라이언트: 'bedrock-agentcore'
 client = boto3.client('bedrock-agentcore', region_name='us-east-1')
 
 # 요청 페이로드
@@ -47,8 +56,8 @@ payload = {
 # Agent Runtime 호출
 response = client.invoke_agent_runtime(
     agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht",
-    runtimeSessionId=str(uuid.uuid4()),
-    payload=json.dumps(payload).encode('utf-8'),
+    runtimeSessionId=str(uuid.uuid4()),  # 매번 새로운 UUID
+    payload=json.dumps(payload).encode('utf-8'),  # ⚠️ bytes로 인코딩 필수!
     qualifier="DEFAULT"
 )
 
@@ -61,48 +70,65 @@ result = json.loads(''.join(content))
 print(result)
 ```
 
-### 스트리밍 응답 처리
+### 완전한 예제 (에러 처리 포함)
 
 ```python
 import boto3
 import json
 import uuid
 
-client = boto3.client('bedrock-agentcore', region_name='us-east-1')
+def call_agent(content: str, user_id: str, record_date: str):
+    """Agent Core Runtime 호출"""
+    
+    client = boto3.client('bedrock-agentcore', region_name='us-east-1')
+    
+    payload = {
+        "content": content,
+        "user_id": user_id,
+        "record_date": record_date
+    }
+    
+    try:
+        response = client.invoke_agent_runtime(
+            agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht",
+            runtimeSessionId=str(uuid.uuid4()),
+            payload=json.dumps(payload).encode('utf-8'),
+            qualifier="DEFAULT"
+        )
+        
+        # 응답 수집
+        content_parts = []
+        response_body = response.get('response', [])
+        
+        # 다양한 응답 형식 처리
+        if isinstance(response_body, bytes):
+            content_parts.append(response_body.decode('utf-8'))
+        elif hasattr(response_body, 'read'):
+            content_parts.append(response_body.read().decode('utf-8'))
+        else:
+            for chunk in response_body:
+                if isinstance(chunk, bytes):
+                    content_parts.append(chunk.decode('utf-8'))
+                elif isinstance(chunk, dict) and 'bytes' in chunk:
+                    content_parts.append(chunk['bytes'].decode('utf-8'))
+        
+        # JSON 파싱
+        full_response = ''.join(content_parts)
+        return json.loads(full_response)
+        
+    except Exception as e:
+        print(f"Error: {type(e).__name__} - {str(e)}")
+        if hasattr(e, 'response'):
+            print(f"Response: {e.response}")
+        raise
 
-payload = {
-    "content": "오늘 뭐 먹었어?",
-    "user_id": "user123",
-    "record_date": "2026-01-18"
-}
-
-response = client.invoke_agent_runtime(
-    agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht",
-    runtimeSessionId=str(uuid.uuid4()),
-    payload=json.dumps(payload).encode('utf-8'),
-    qualifier="DEFAULT"
+# 사용
+result = call_agent(
+    content="오늘 뭐 먹었어?",
+    user_id="user123",
+    record_date="2026-01-18"
 )
-
-# 스트리밍 응답 처리
-if "text/event-stream" in response.get("contentType", ""):
-    content = []
-    for line in response["response"].iter_lines(chunk_size=10):
-        if line:
-            line = line.decode("utf-8")
-            if line.startswith("data: "):
-                line = line[6:]
-                content.append(line)
-    
-    result = json.loads("\n".join(content))
-    print(result)
-else:
-    # 일반 응답
-    content = []
-    for chunk in response.get("response", []):
-        content.append(chunk.decode('utf-8'))
-    
-    result = json.loads(''.join(content))
-    print(result)
+print(result)
 ```
 
 ### FastAPI 예제
