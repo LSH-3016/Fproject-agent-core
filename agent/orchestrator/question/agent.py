@@ -72,52 +72,70 @@ def generate_auto_response(question: str, user_id: str = None, current_date: str
         Dict[str, Any]: 생성한 답변
     """
     
-    print(f"[DEBUG] generate_auto_response 호출됨")
+    print(f"[DEBUG] ========== generate_auto_response 호출 ==========")
     print(f"[DEBUG] question: {question}")
     print(f"[DEBUG] user_id: {user_id}")
     print(f"[DEBUG] current_date: {current_date}")
+    
+    # 환경변수 확인
+    kb_id = os.environ.get('KNOWLEDGE_BASE_ID', '')
+    aws_region = os.environ.get('AWS_REGION', '')
+    print(f"[DEBUG] KNOWLEDGE_BASE_ID from env: {kb_id}")
+    print(f"[DEBUG] AWS_REGION from env: {aws_region}")
 
     # system prompt 구성
     system_prompt = RESPONSE_SYSTEM_PROMPT + f"\nSELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}"
     
     if user_id:
-        system_prompt += f"\n\n<user_id>{user_id}</user_id>"
+        system_prompt += f"\n\n<context>\n사용자 ID: {user_id}\n"
     if current_date:
-        system_prompt += f"\n<current_date>{current_date}</current_date>"
+        system_prompt += f"현재 날짜: {current_date}\n</context>"
 
     # 각 요청마다 새로운 Agent 생성
+    print(f"[DEBUG] Creating Agent with retrieve tool...")
     auto_response_agent = Agent(
         tools=[retrieve],
         system_prompt=system_prompt,
     )
 
-    # 검색 쿼리 구성
-    search_instruction = "반드시 retrieve 도구를 먼저 사용하여 지식베이스를 검색한 후 답변하세요.\n\n"
+    # 검색 쿼리 구성 - 더 명확하게
+    search_query = f"""
+당신은 반드시 retrieve 도구를 사용하여 지식베이스를 검색해야 합니다.
+
+검색 조건:
+- 사용자 ID: {user_id if user_id else '미제공'}
+- 현재 날짜: {current_date if current_date else '미제공'}
+- 질문: {question}
+
+지금 즉시 retrieve 도구를 호출하여 관련 정보를 검색하세요.
+검색 결과를 바탕으로만 답변하세요.
+"""
     
-    if user_id:
-        search_instruction += f"사용자 ID: {user_id}\n"
-    if current_date:
-        search_instruction += f"현재 날짜: {current_date}\n"
-    
-    search_instruction += f"질문: {question}"
-    
-    print(f"[DEBUG] search_instruction: {search_instruction}")
+    print(f"[DEBUG] Search query prepared")
+    print(f"[DEBUG] Calling agent...")
 
     try:
         # 리뷰에 대한 자동 응답 생성
-        response = auto_response_agent(search_instruction)
-        print(f"[DEBUG] Agent 응답: {response}")
+        response = auto_response_agent(search_query)
+        print(f"[DEBUG] Agent 응답 완료")
+        print(f"[DEBUG] Response type: {type(response)}")
+        print(f"[DEBUG] Response: {str(response)[:200]}...")
 
         # tool_result 를 추출
         tool_results = filter_tool_result(auto_response_agent)
-        print(f"[DEBUG] Tool results: {tool_results}")
+        print(f"[DEBUG] Tool results count: {len(tool_results)}")
+        if tool_results:
+            print(f"[DEBUG] First tool result: {str(tool_results[0])[:200]}...")
 
         # 결과 반환
         result = {"response": str(response)}
+        print(f"[DEBUG] ========== generate_auto_response 완료 ==========")
         return result
         
     except Exception as e:
-        print(f"[ERROR] generate_auto_response 실패: {str(e)}")
+        print(f"[ERROR] ========== generate_auto_response 실패 ==========")
+        print(f"[ERROR] Exception type: {type(e).__name__}")
+        print(f"[ERROR] Exception message: {str(e)}")
         import traceback
         traceback.print_exc()
         return {"response": f"답변 생성 중 오류가 발생했습니다: {str(e)}"}

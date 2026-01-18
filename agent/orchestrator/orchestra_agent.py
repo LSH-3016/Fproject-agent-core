@@ -40,11 +40,12 @@ ORCHESTRATOR_PROMPT = """
    
 2. generate_auto_response: 사용자의 질문에 답변을 생성
    - 사용 조건: 질문, 조회, 검색, "~했어?", "~뭐야?" 등의 질문 형태
-   - 필수 파라미터: 
-     * question (질문 내용 전체를 문자열로 전달)
-     * user_id (사용자 ID - Knowledge Base 검색 필터용)
-     * current_date (현재 날짜 - 검색 컨텍스트용, 선택사항)
+   - **반드시 전달해야 할 파라미터:**
+     * question: 질문 내용 전체를 문자열로 전달
+     * user_id: 사용자 ID (제공된 경우 반드시 전달)
+     * current_date: 현재 날짜 (제공된 경우 반드시 전달)
    - 응답 형식: {"type": "answer", "content": "답변 내용", "message": "질문에 대한 답변입니다."}
+   - **중요**: user_id와 current_date가 제공되면 반드시 tool 호출 시 함께 전달해야 합니다
 
 3. 데이터 그대로 반환 (no_processing)
    - 사용 조건: 단순 데이터 입력, 저장 요청, 특별한 처리가 필요 없는 경우
@@ -60,10 +61,10 @@ ORCHESTRATOR_PROMPT = """
    - 단순 데이터 입력인가? (사실 진술, 활동 기록) → no_processing → type: "data"
 
 2. 질문이면 generate_auto_response tool을 호출합니다
-   - user_input 전체를 question 파라미터로 전달
-   - user_id도 함께 전달 (Knowledge Base 검색 필터용)
-   - current_date도 함께 전달 (검색 컨텍스트용)
-   - tool 결과를 content에 담고, type은 "answer", message는 "질문에 대한 답변입니다."
+   - question 파라미터: user_input 전체를 전달
+   - user_id 파라미터: 제공된 user_id를 반드시 전달 (없으면 생략)
+   - current_date 파라미터: 제공된 current_date를 반드시 전달 (없으면 생략)
+   - tool 결과의 "response" 값을 content에 담고, type은 "answer", message는 "질문에 대한 답변입니다."
 
 3. 일기 생성이면 generate_auto_summarize tool을 호출합니다
    - tool 결과를 content에 담고, type은 "diary", message는 "일기가 생성되었습니다."
@@ -85,6 +86,7 @@ ORCHESTRATOR_PROMPT = """
 
 <필수규칙>
 - 질문이나 일기 생성 요청은 반드시 해당 tool을 사용해야 합니다
+- generate_auto_response 호출 시 user_id와 current_date가 제공되면 반드시 함께 전달해야 합니다
 - 단순 데이터 입력은 tool을 사용하지 않고 type: "data"로 반환합니다
 - tool 결과를 수정하거나 추가 설명을 붙이지 마세요
 - 응답은 반드시 type, content, message 세 필드를 포함해야 합니다
@@ -138,17 +140,19 @@ def orchestrate_request(
 
     # orchestrator에게 요청 처리
     prompt = f"""
-    <user_input>{user_input}</user_input>
-    <request_type>{request_type if request_type else '자동 판단'}</request_type>
-    """
+사용자 요청을 분석하고 적절한 tool을 호출하세요.
+
+<user_input>{user_input}</user_input>
+<request_type>{request_type if request_type else '자동 판단'}</request_type>
+"""
     
-    # user_id 추가
+    # user_id 추가 (중요: tool 호출 시 반드시 전달)
     if user_id:
-        prompt += f"\n<user_id>{user_id}</user_id>"
+        prompt += f"\n<user_id>{user_id}</user_id>\n⚠️ 중요: generate_auto_response 호출 시 이 user_id를 반드시 전달하세요!"
     
-    # current_date 추가
+    # current_date 추가 (중요: tool 호출 시 반드시 전달)
     if current_date:
-        prompt += f"\n<current_date>{current_date}</current_date>"
+        prompt += f"\n<current_date>{current_date}</current_date>\n⚠️ 중요: generate_auto_response 호출 시 이 current_date를 반드시 전달하세요!"
     
     # summarize 요청인 경우 temperature 정보 추가
     if request_type == "summarize" or request_type is None:
