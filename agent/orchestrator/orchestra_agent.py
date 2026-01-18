@@ -43,6 +43,7 @@ ORCHESTRATOR_PROMPT = """
    - 필수 파라미터: 
      * question (질문 내용 전체를 문자열로 전달)
      * user_id (사용자 ID - Knowledge Base 검색 필터용)
+     * current_date (현재 날짜 - 검색 컨텍스트용, 선택사항)
    - 응답 형식: {"type": "answer", "content": "답변 내용", "message": "질문에 대한 답변입니다."}
 
 3. 데이터 그대로 반환 (no_processing)
@@ -61,6 +62,7 @@ ORCHESTRATOR_PROMPT = """
 2. 질문이면 generate_auto_response tool을 호출합니다
    - user_input 전체를 question 파라미터로 전달
    - user_id도 함께 전달 (Knowledge Base 검색 필터용)
+   - current_date도 함께 전달 (검색 컨텍스트용)
    - tool 결과를 content에 담고, type은 "answer", message는 "질문에 대한 답변입니다."
 
 3. 일기 생성이면 generate_auto_summarize tool을 호출합니다
@@ -102,6 +104,7 @@ class OrchestratorResult(BaseModel):
 def orchestrate_request(
     user_input: str,
     user_id: Optional[str] = None,
+    current_date: Optional[str] = None,
     request_type: Optional[str] = None,
     temperature: Optional[float] = None,
 ) -> Dict[str, Any]:
@@ -111,6 +114,7 @@ def orchestrate_request(
     Args:
         user_input (str): 사용자 입력 데이터
         user_id (Optional[str]): 사용자 ID (Knowledge Base 검색 필터용)
+        current_date (Optional[str]): 현재 날짜 (검색 컨텍스트용)
         request_type (Optional[str]): 요청 타입 ('summarize' 또는 'question'). 
                                        None이면 orchestrator가 자동 판단
         temperature (Optional[float]): summarize agent용 temperature 파라미터 (0.0 ~ 1.0)
@@ -141,6 +145,10 @@ def orchestrate_request(
     # user_id 추가
     if user_id:
         prompt += f"\n<user_id>{user_id}</user_id>"
+    
+    # current_date 추가
+    if current_date:
+        prompt += f"\n<current_date>{current_date}</current_date>"
     
     # summarize 요청인 경우 temperature 정보 추가
     if request_type == "summarize" or request_type is None:

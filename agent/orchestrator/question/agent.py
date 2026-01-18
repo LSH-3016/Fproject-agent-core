@@ -25,42 +25,29 @@ except Exception as e:
 RESPONSE_SYSTEM_PROMPT = """
     당신은 일기를 분석하여 고객의 질문에 답변하는 AI 어시스턴트입니다.
 
-    고객 질문에 적절한 답변을 생성하기 위해 다음 순서를 정확히 따라주세요:
-
     <작업순서>
-    1. 반드시 먼저 retrieve 도구를 사용하여 지식베이스에서 관련 정보를 검색합니다
-    2. 고객의 user_id를 참고하여, 해당 폴더의 내용만 확인하도록 합니다
-    3. 검색된 정보를 활용하여 정확한 답변을 준비합니다
-    4. SELLER_ANSWER_PROMPT에 정의된 셀러의 톤과 스타일을 적용합니다
+    1. **반드시 먼저 retrieve 도구를 사용**하여 지식베이스에서 관련 정보를 검색합니다
+       - retrieve 도구 없이는 절대 답변하지 마세요
+       - 검색 쿼리에 user_id와 날짜 정보를 포함하세요
+    2. 검색된 정보를 활용하여 정확한 답변을 준비합니다
+    3. 지식베이스에서 찾은 내용만을 기반으로 답변합니다
     </작업순서>
 
     <답변지침>
-    - 모든 사실 정보는 검색된 지식베이스 내용을 기반으로 합니다
-    - 모호한 답변보다는 구체적이고 실행 가능한 답변을 제공합니다
-    - 전문적이면서도 따뜻한 톤을 유지합니다
-    - 개인정보나 민감한 정보는 공개적으로 언급하지 않습니다
-    - user_id를 답변에 포함하지 않습니다
+    - retrieve 도구로 검색한 결과가 없으면: "해당 날짜의 일기 기록을 찾을 수 없습니다."
+    - 검색 결과가 있으면: 검색된 내용을 바탕으로 구체적으로 답변
+    - user_id는 답변에 포함하지 않습니다
     - 다른 사용자의 기록은 답변에 포함하지 않습니다
-    - 다른 사용자를 언급하지 않습니다
-    - 복잡한 문제는 해당 내용을 확인할 수 없다고 답변합니다
-    - 지식베이스에 없는 내용은 해당하는 내용이 없다고 답변합니다
-    - 질문에 해당하는 내용외의 일기 내용은 언급하지마
-    - 질문에 대한 답변만 하고, 추측과 의견은 붙이지 않습니다
-    - 일기의 내용을 리뷰하지 않습니다
-    - 추측성, 애매모한 표현을 사용하지 않습니다
-    - 답변에 백틱이나 코드 블록 포맷(```json, ```python 등)을 붙이지 마세요. plain text로 보여주세요. 
-
+    - 지식베이스에 없는 내용은 추측하지 않습니다
+    - 질문에 대한 답변만 하고, 추가 의견이나 조언은 붙이지 않습니다
+    - 답변에 백틱이나 코드 블록 포맷을 사용하지 마세요
     </답변지침>
 
     <필수규칙>
-    - 반드시 답변하기 전에 retrieve 도구를 먼저 사용해야 합니다
-    - 반드시 user_id를 참고하여, 해당 사용자의 폴더 내용만을 참고하여 답변해야 합니다
-    - SELLER_ANSWER_PROMPT의 톤 가이드를 반드시 따라야 합니다
-    - 자연스러운 한국어로 작성합니다
+    - **반드시 답변하기 전에 retrieve 도구를 먼저 사용해야 합니다**
+    - retrieve 도구를 사용하지 않고 답변하는 것은 금지됩니다
     - 지식베이스에서 찾지 못한 정보는 절대 만들어내지 않습니다
-    - 답변은 간결하지만 완전해야 합니다
-    - 질문에 대한 답변만 생성하고, 사족은 달지마
-    - 질문에 대한 답변이 없으면, 일기 내용에 대해 언급하지마
+    - 자연스러운 한국어로 작성합니다
     </필수규칙>
 
 """
@@ -72,41 +59,51 @@ SELLER_ANSWER_PROMPT = """
 """
 
 @tool
-def generate_auto_response(question: str, user_id: str = None) -> Dict[str, Any]:
+def generate_auto_response(question: str, user_id: str = None, current_date: str = None) -> Dict[str, Any]:
     """
     질문에 대한 답변을 생성하는 메인 함수
 
     Args:
         question (str): 사용자의 질문
         user_id (str): 사용자 ID (Knowledge Base 검색 필터용)
+        current_date (str): 현재 날짜 (검색 컨텍스트용)
 
     Returns:
         Dict[str, Any]: 생성한 답변
     """
 
+    # system prompt 구성
+    system_prompt = RESPONSE_SYSTEM_PROMPT + f"\nSELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}"
+    
+    if user_id:
+        system_prompt += f"\n\n<user_id>{user_id}</user_id>"
+    if current_date:
+        system_prompt += f"\n<current_date>{current_date}</current_date>"
+
     # 각 요청마다 새로운 Agent 생성
     auto_response_agent = Agent(
         tools=[retrieve],
-        system_prompt=RESPONSE_SYSTEM_PROMPT
-        + f"""
-        SELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}
-        """
-        + (f"\n<user_id>{user_id}</user_id>" if user_id else ""),
+        system_prompt=system_prompt,
     )
 
-    # user_id가 있으면 검색 쿼리에 포함
-    search_query = question
+    # 검색 쿼리 구성
+    search_instruction = "반드시 retrieve 도구를 먼저 사용하여 지식베이스를 검색한 후 답변하세요.\n\n"
+    
     if user_id:
-        search_query = f"user_id: {user_id}\n질문: {question}"
+        search_instruction += f"사용자 ID: {user_id}\n"
+    if current_date:
+        search_instruction += f"현재 날짜: {current_date}\n"
+    
+    search_instruction += f"질문: {question}"
 
     # 리뷰에 대한 자동 응답 생성
-    response = auto_response_agent(search_query)
+    response = auto_response_agent(search_instruction)
 
     # tool_result 를 추출
     tool_results = filter_tool_result(auto_response_agent)
 
-    # 결과 반환 - tool_results를 포함
-    result = {"response": str(response)}#, "tool_results": tool_results}
+    # 결과 반환
+    result = {"response": str(response)}
     return result
 
 def filter_tool_result(agent: Agent) -> List:

@@ -33,6 +33,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # 추가 파라미터 추출
         user_id = event.get('user_id')
+        current_date = event.get('current_date')
         request_type = event.get('request_type')
         temperature = event.get('temperature')
         
@@ -40,6 +41,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         result = orchestrate_request(
             user_input=user_input,
             user_id=user_id,
+            current_date=current_date,
             request_type=request_type,
             temperature=temperature
         )
