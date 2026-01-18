@@ -14,5 +14,5 @@ RUN pip install --no-cache-dir -r requirements-lambda.txt
 # 애플리케이션 코드 복사
 COPY agent/ ${LAMBDA_TASK_ROOT}/
 
-# Lambda 핸들러 설정
-CMD ["agentcore_agent.lambda_handler"]
+# Lambda 핸들러 설정 (간단한 경로)
+CMD ["handler.lambda_handler"]
