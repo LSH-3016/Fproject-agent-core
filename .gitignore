@@ -8,6 +8,12 @@ venv/
 
 # 환경 변수 파일
 .env
+.env.local
+.env.*.local
+
+# 민감 정보 파일
+SETUP_COMPLETE.md
+*_COMPLETE.md
 
 # IAM Policy 파일 (임시)
 trust-policy.json

@@ -11,6 +11,16 @@ from strands import Agent
 from .summerize.agent import generate_auto_summerize
 from .question.agent import generate_auto_response
 
+# Secrets Manager에서 설정 가져오기
+try:
+    from ..utils.secrets import get_config
+    config = get_config()
+    BEDROCK_MODEL_ARN = config.get('BEDROCK_MODEL_ARN', '')
+except Exception as e:
+    print(f"⚠️  설정을 가져올 수 없습니다: {str(e)}")
+    # 환경변수 또는 기본값 사용
+    BEDROCK_MODEL_ARN = os.environ.get('BEDROCK_MODEL_ARN', '<your-bedrock-model-arn>')
+
 # Configure the root strands logger
 logging.getLogger("strands").setLevel(logging.INFO)
 
@@ -92,9 +102,7 @@ def orchestrate_request(
 
     # 각 요청마다 새로운 Agent 생성
     orchestrator_agent = Agent(
-        # ✅ TODO: 실제 사용 가능한 Bedrock 모델 ARN으로 교체
-        # aws bedrock list-foundation-models --region us-east-1 명령어로 확인 가능
-        model="arn:aws:bedrock:us-east-1:324547056370:inference-profile/global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        model=BEDROCK_MODEL_ARN,
         tools=[
             generate_auto_summerize,
             generate_auto_response,

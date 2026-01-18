@@ -5,26 +5,32 @@ GitHub Actions로 빌드된 이미지를 가져와서 Agent Core에 배포합니
 from bedrock_agentcore_starter_toolkit import Runtime
 from boto3.session import Session
 import sys
+import os
+
+# Secrets Manager에서 설정 가져오기
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'agent'))
+from utils.secrets import get_config
+
+config = get_config()
 
 # AWS 세션 설정
 boto_session = Session()
-region = boto_session.region_name
+region = config.get('AWS_REGION', boto_session.region_name)
 account_id = boto_session.client('sts').get_caller_identity()['Account']
 
 # ========================================
-# ⚠️ 아래 설정값들을 수정하세요
+# 설정값 (Secrets Manager에서 자동으로 가져옴)
 # ========================================
 
 # ECR 설정
-ECR_REPOSITORY = "diary-orchestrator-agent"  # ECR 저장소 이름
-IMAGE_TAG = "latest"  # 또는 특정 commit SHA
+ECR_REPOSITORY = "diary-orchestrator-agent"
+IMAGE_TAG = "latest"
 
 # Agent 설정
 AGENT_NAME = "diary_orchestrator_agent"
 
-# ✅ TODO: 실제 IAM Role ARN으로 교체 필요!
-# AWS Console > IAM > Roles에서 생성한 Role의 ARN을 입력하세요
-EXECUTION_ROLE = "<your-runtime-execution-role-arn>"  # 예: "arn:aws:iam::123456789012:role/AgentCoreExecutionRole"
+# IAM Role ARN (Secrets Manager에서 가져옴)
+EXECUTION_ROLE = config.get('IAM_ROLE_ARN', '')
 
 # ========================================
 
@@ -40,10 +46,9 @@ print(f"Region: {region}")
 print("=" * 60)
 
 # Execution Role 확인
-if EXECUTION_ROLE == "<your-runtime-execution-role-arn>":
-    print("❌ 오류: EXECUTION_ROLE을 설정하지 않았습니다!")
-    print("   deploy_from_ecr.py 파일을 열어 EXECUTION_ROLE을 실제 IAM Role ARN으로 수정하세요.")
-    print("   예: arn:aws:iam::123456789012:role/AgentCoreExecutionRole")
+if not EXECUTION_ROLE or EXECUTION_ROLE == "<your-runtime-execution-role-arn>":
+    print("❌ 오류: IAM Role ARN을 Secrets Manager에서 가져올 수 없습니다!")
+    print("   Secrets Manager에 'agent-core-secret'이 올바르게 설정되어 있는지 확인하세요.")
     sys.exit(1)
 
 # Runtime 설정

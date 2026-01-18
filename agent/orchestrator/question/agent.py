@@ -6,21 +6,21 @@ from typing import Any, Dict, List
 from strands import Agent, tool
 from strands_tools import retrieve
 
-# Configure the root strands logger
-#logging.getLogger("strands").setLevel(logging.INFO)
-
-# Add a handler to see the logs
-#logging.basicConfig(
-#    format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()]
-#)
-
-# ========================================
-# ⚠️ 환경 변수 설정 - 실제 값으로 수정하세요
-# ========================================
-# TODO: 실제 Knowledge Base ID로 교체
-os.environ['KNOWLEDGE_BASE_ID'] = 'LOCNRTBMNB'  # ✅ 여기 수정!
-# TODO: 실제 AWS Region으로 교체
-os.environ['AWS_REGION'] = 'us-east-1'  # ✅ 여기 수정!
+# Secrets Manager에서 설정 가져오기
+try:
+    from ..utils.secrets import get_config
+    config = get_config()
+    os.environ['KNOWLEDGE_BASE_ID'] = config.get('KNOWLEDGE_BASE_ID', '')
+    os.environ['AWS_REGION'] = config.get('AWS_REGION', 'us-east-1')
+except Exception as e:
+    print(f"⚠️  설정을 가져올 수 없습니다: {str(e)}")
+    # ========================================
+    # ⚠️ 환경 변수 설정 - 실제 값으로 수정하세요
+    # ========================================
+    # TODO: 실제 Knowledge Base ID로 교체
+    os.environ['KNOWLEDGE_BASE_ID'] = os.environ.get('KNOWLEDGE_BASE_ID', '<your-knowledge-base-id>')
+    # TODO: 실제 AWS Region으로 교체
+    os.environ['AWS_REGION'] = os.environ.get('AWS_REGION', 'us-east-1')
 
 RESPONSE_SYSTEM_PROMPT = """
     당신은 일기를 분석하여 고객의 질문에 답변하는 AI 어시스턴트입니다.
