@@ -3,7 +3,12 @@ Agent Core Runtime Entrypoint
 이 파일은 Bedrock Agent Core Runtime에서 호출되는 진입점입니다.
 """
 import json
+import sys
+import os
 from typing import Any, Dict
+
+# orchestrator import
+sys.path.insert(0, os.path.dirname(__file__))
 from orchestrator.orchestra_agent import orchestrate_request
 
 
@@ -20,43 +25,72 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     try:
         print(f"[DEBUG] ========== Lambda Handler 시작 ==========")
-        print(f"[DEBUG] Received event: {json.dumps(event, ensure_ascii=False)}")
+        print(f"[DEBUG] Event type: {type(event)}")
+        print(f"[DEBUG] Event keys: {event.keys() if isinstance(event, dict) else 'N/A'}")
+        print(f"[DEBUG] Raw event: {json.dumps(event, ensure_ascii=False, default=str)}")
         
-        # event에서 입력 데이터 추출
-        # Agent Core는 다양한 형식으로 데이터를 전달할 수 있으므로 유연하게 처리
+        # Agent Core Runtime은 다양한 형식으로 이벤트를 전달할 수 있음
+        # 1. 직접 페이로드
+        # 2. body 안에 JSON 문자열
+        # 3. inputText 필드
+        
         user_input = None
+        user_id = None
+        current_date = None
+        request_type = None
+        temperature = None
         
-        # 1. 직접 필드에서 추출
-        if 'content' in event:
-            user_input = event['content']
-        elif 'inputText' in event:
-            user_input = event['inputText']
-        elif 'input' in event:
-            user_input = event['input']
-        elif 'user_input' in event:
-            user_input = event['user_input']
-        # 2. body에서 추출
-        elif 'body' in event:
-            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
-            user_input = body.get('content') or body.get('input') or body.get('inputText') or body.get('user_input')
+        # 페이로드 파싱 시도
+        if isinstance(event, str):
+            # 문자열로 온 경우 JSON 파싱
+            try:
+                event = json.loads(event)
+            except:
+                # JSON이 아니면 그대로 user_input으로 사용
+                user_input = event
+        
+        if isinstance(event, dict):
+            # 1. 직접 필드 확인
+            user_input = event.get('content') or event.get('inputText') or event.get('input') or event.get('user_input')
+            user_id = event.get('user_id')
+            current_date = event.get('record_date') or event.get('current_date')
+            request_type = event.get('request_type')
+            temperature = event.get('temperature')
+            
+            # 2. body 필드 확인
+            if not user_input and 'body' in event:
+                body = event['body']
+                if isinstance(body, str):
+                    try:
+                        body = json.loads(body)
+                    except:
+                        user_input = body
+                
+                if isinstance(body, dict):
+                    user_input = body.get('content') or body.get('inputText') or body.get('input') or body.get('user_input')
+                    user_id = user_id or body.get('user_id')
+                    current_date = current_date or body.get('record_date') or body.get('current_date')
+                    request_type = request_type or body.get('request_type')
+                    temperature = temperature or body.get('temperature')
+            
+            # 3. payload 필드 확인 (Agent Core Runtime이 사용할 수 있음)
+            if not user_input and 'payload' in event:
+                payload = event['payload']
+                if isinstance(payload, str):
+                    try:
+                        payload = json.loads(payload)
+                    except:
+                        user_input = payload
+                
+                if isinstance(payload, dict):
+                    user_input = payload.get('content') or payload.get('inputText') or payload.get('input') or payload.get('user_input')
+                    user_id = user_id or payload.get('user_id')
+                    current_date = current_date or payload.get('record_date') or payload.get('current_date')
+                    request_type = request_type or payload.get('request_type')
+                    temperature = temperature or payload.get('temperature')
         
         if not user_input:
             raise ValueError("입력 데이터를 찾을 수 없습니다. 'content', 'input', 'inputText', 또는 'user_input' 필드가 필요합니다.")
-        
-        # 추가 파라미터 추출 (여러 필드명 지원)
-        user_id = event.get('user_id')
-        if not user_id and 'body' in event:
-            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
-            user_id = body.get('user_id')
-        
-        # record_date 또는 current_date
-        current_date = event.get('record_date') or event.get('current_date')
-        if not current_date and 'body' in event:
-            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
-            current_date = body.get('record_date') or body.get('current_date')
-        
-        request_type = event.get('request_type')
-        temperature = event.get('temperature')
         
         print(f"[DEBUG] Extracted parameters:")
         print(f"[DEBUG]   user_input: {user_input}")
@@ -78,14 +112,23 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         print(f"[DEBUG] Orchestrator result: {json.dumps(result, ensure_ascii=False)}")
         print(f"[DEBUG] ========== Lambda Handler 완료 ==========")
         
-        # 성공 응답 반환
-        return {
+        # Agent Core Runtime은 다양한 응답 형식을 지원
+        # 1. 직접 반환
+        # 2. statusCode + body 형식
+        
+        # 두 형식 모두 지원하도록 반환
+        response = {
             'statusCode': 200,
             'body': json.dumps(result, ensure_ascii=False),
             'headers': {
                 'Content-Type': 'application/json'
             }
         }
+        
+        # 직접 결과도 포함 (Agent Core Runtime이 어떤 형식을 기대하는지 모르므로)
+        response.update(result)
+        
+        return response
         
     except Exception as e:
         # 에러 처리
@@ -95,17 +138,19 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         import traceback
         traceback.print_exc()
         
+        error_response = {
+            'type': 'error',
+            'content': '',
+            'message': f'요청 처리 중 오류가 발생했습니다: {str(e)}'
+        }
+        
         return {
             'statusCode': 500,
-            'body': json.dumps({
-                'error': error_message,
-                'type': 'error',
-                'content': '',
-                'message': '요청 처리 중 오류가 발생했습니다.'
-            }, ensure_ascii=False),
+            'body': json.dumps(error_response, ensure_ascii=False),
             'headers': {
                 'Content-Type': 'application/json'
-            }
+            },
+            **error_response  # 직접 필드도 포함
         }
 
 
