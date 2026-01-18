@@ -64,7 +64,7 @@ try:
         existing_runtime = None
         
         for runtime in list_response.get('agentRuntimes', []):
-            if runtime.get('name') == AGENT_NAME:
+            if runtime.get('agentRuntimeName') == AGENT_NAME:
                 existing_runtime = runtime
                 print(f"✅ 기존 Runtime 발견: {runtime['agentRuntimeArn']}")
                 break
@@ -74,7 +74,9 @@ try:
             print("\n기존 Runtime 업데이트 중...")
             response = client.update_agent_runtime(
                 agentRuntimeArn=existing_runtime['agentRuntimeArn'],
-                imageUri=ecr_image_uri,
+                agentRuntimeArtifact={
+                    'imageUri': ecr_image_uri
+                }
             )
             print("✅ Agent Runtime 업데이트 완료!")
             agent_arn = existing_runtime['agentRuntimeArn']
@@ -82,9 +84,15 @@ try:
             # 새 Runtime 생성
             print("\n새 Agent Runtime 생성 중...")
             response = client.create_agent_runtime(
-                name=AGENT_NAME,
-                imageUri=ecr_image_uri,
-                executionRoleArn=EXECUTION_ROLE,
+                agentRuntimeName=AGENT_NAME,
+                agentRuntimeArtifact={
+                    'imageUri': ecr_image_uri
+                },
+                roleArn=EXECUTION_ROLE,
+                networkConfiguration={
+                    'subnetIds': [],  # VPC 사용 안 함
+                    'securityGroupIds': []
+                }
             )
             print("✅ Agent Runtime 생성 완료!")
             agent_arn = response['agentRuntimeArn']
@@ -93,9 +101,15 @@ try:
         # Runtime이 없으면 새로 생성
         print("\n새 Agent Runtime 생성 중...")
         response = client.create_agent_runtime(
-            name=AGENT_NAME,
-            imageUri=ecr_image_uri,
-            executionRoleArn=EXECUTION_ROLE,
+            agentRuntimeName=AGENT_NAME,
+            agentRuntimeArtifact={
+                'imageUri': ecr_image_uri
+            },
+            roleArn=EXECUTION_ROLE,
+            networkConfiguration={
+                'subnetIds': [],  # VPC 사용 안 함
+                'securityGroupIds': []
+            }
         )
         print("✅ Agent Runtime 생성 완료!")
         agent_arn = response['agentRuntimeArn']
