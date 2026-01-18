@@ -69,7 +69,7 @@ https://github.com/YOUR_USERNAME/YOUR_REPO/actions
 │   ├── orchestrator/
 │   │   ├── orchestra_agent.py  # 메인 오케스트레이터
 │   │   ├── question/agent.py   # 질문 답변 Agent
-│   │   └── summerize/agent.py  # 일기 생성 Agent
+│   │   └── summarize/agent.py  # 일기 생성 Agent
 │   └── agentcore_agent.py      # Lambda 핸들러
 ├── Dockerfile
 ├── deploy_from_ecr.py          # 배포 스크립트

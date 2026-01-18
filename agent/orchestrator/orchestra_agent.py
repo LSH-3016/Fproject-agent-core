@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 from strands import Agent
 
-from .summerize.agent import generate_auto_summerize
+from .summarize.agent import generate_auto_summarize
 from .question.agent import generate_auto_response
 
 # Secrets Manager에서 설정 가져오기
@@ -34,7 +34,7 @@ ORCHESTRATOR_PROMPT = """
 사용자가 입력하는 데이터를 기반으로 다음 중 가장 적절한 처리 방법을 선택해주세요.
 
 <처리 방법>
-1. generate_auto_summerize: 사용자의 데이터를 분석하여 일기 생성
+1. generate_auto_summarize: 사용자의 데이터를 분석하여 일기 생성
    - 사용 조건: 일기 작성, 일기 생성, 요약 생성 등의 요청
    - 응답 형식: {"type": "diary", "content": "생성된 일기 내용", "message": "일기가 생성되었습니다."}
    
@@ -53,14 +53,14 @@ ORCHESTRATOR_PROMPT = """
 <작업순서>
 1. 사용자의 요청 유형을 판단합니다:
    - 질문 형태인가? (질문, 조회, "~했어?", "~뭐야?") → generate_auto_response → type: "answer"
-   - 일기 생성 요청인가? (일기 작성, 요약 생성) → generate_auto_summerize → type: "diary"
+   - 일기 생성 요청인가? (일기 작성, 요약 생성) → generate_auto_summarize → type: "diary"
    - 단순 데이터 입력인가? (사실 진술, 활동 기록) → no_processing → type: "data"
 
 2. 질문이면 generate_auto_response tool을 호출합니다
    - user_input 전체를 question 파라미터로 전달
    - tool 결과를 content에 담고, type은 "answer", message는 "질문에 대한 답변입니다."
 
-3. 일기 생성이면 generate_auto_summerize tool을 호출합니다
+3. 일기 생성이면 generate_auto_summarize tool을 호출합니다
    - tool 결과를 content에 담고, type은 "diary", message는 "일기가 생성되었습니다."
 
 4. 단순 데이터 입력이면 tool을 사용하지 않습니다
@@ -106,9 +106,9 @@ def orchestrate_request(
 
     Args:
         user_input (str): 사용자 입력 데이터
-        request_type (Optional[str]): 요청 타입 ('summerize' 또는 'question'). 
+        request_type (Optional[str]): 요청 타입 ('summarize' 또는 'question'). 
                                        None이면 orchestrator가 자동 판단
-        temperature (Optional[float]): summerize agent용 temperature 파라미터 (0.0 ~ 1.0)
+        temperature (Optional[float]): summarize agent용 temperature 파라미터 (0.0 ~ 1.0)
 
     Returns:
         Dict[str, Any]: 처리 결과
@@ -121,7 +121,7 @@ def orchestrate_request(
     orchestrator_agent = Agent(
         model=BEDROCK_MODEL_ARN,
         tools=[
-            generate_auto_summerize,
+            generate_auto_summarize,
             generate_auto_response,
         ],
         system_prompt=ORCHESTRATOR_PROMPT,
@@ -133,8 +133,8 @@ def orchestrate_request(
     <request_type>{request_type if request_type else '자동 판단'}</request_type>
     """
     
-    # summerize 요청인 경우 temperature 정보 추가
-    if request_type == "summerize" or request_type is None:
+    # summarize 요청인 경우 temperature 정보 추가
+    if request_type == "summarize" or request_type is None:
         if temperature is not None:
             prompt += f"\n<temperature>{temperature}</temperature>"
     

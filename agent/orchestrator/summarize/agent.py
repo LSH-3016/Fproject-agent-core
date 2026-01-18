@@ -15,7 +15,7 @@ from strands import Agent, tool
 
 os.environ['AWS_REGION'] = 'us-east-1'
 
-SUMMERIZE_SYSTEM_PROMPT = """
+summarize_SYSTEM_PROMPT = """
     당신은 일기를 작성하는 AI 어시스턴트입니다.
 
     적절한 작성하기 위해 다음 순서를 정확히 따라주세요:
@@ -49,7 +49,7 @@ SELLER_ANSWER_PROMPT = """
 """
 
 @tool
-def generate_auto_summerize(
+def generate_auto_summarize(
     content: str,
     temperature: Optional[float] = None,
     top_k: int = 50
@@ -68,7 +68,7 @@ def generate_auto_summerize(
 
     # 각 요청마다 새로운 Agent 생성
     auto_response_agent = Agent(
-        system_prompt=SUMMERIZE_SYSTEM_PROMPT
+        system_prompt=summarize_SYSTEM_PROMPT
         + f"""
         SELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}
         """,
