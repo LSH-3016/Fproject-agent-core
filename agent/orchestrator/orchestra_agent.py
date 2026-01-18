@@ -36,40 +36,53 @@ ORCHESTRATOR_PROMPT = """
 <처리 방법>
 1. generate_auto_summerize: 사용자의 데이터를 분석하여 일기 생성
    - 사용 조건: 일기 작성, 일기 생성, 요약 생성 등의 요청
+   - 응답 형식: {"type": "diary", "content": "생성된 일기 내용", "message": "일기가 생성되었습니다."}
    
 2. generate_auto_response: 사용자의 질문에 답변을 생성
    - 사용 조건: 질문, 조회, 검색, "~했어?", "~뭐야?" 등의 질문 형태
    - 필수 파라미터: question (질문 내용 전체를 문자열로 전달)
-   - 반환 형식: {"response": "답변내용"} 형태의 딕셔너리
+   - 응답 형식: {"type": "answer", "content": "답변 내용", "message": "질문에 대한 답변입니다."}
 
 3. 데이터 그대로 반환 (no_processing)
    - 사용 조건: 단순 데이터 입력, 저장 요청, 특별한 처리가 필요 없는 경우
    - 예시: "오늘 영화 봤어", "점심에 파스타 먹었어", "운동 30분 했어"
+   - 응답 형식: {"type": "data", "content": "", "message": "메시지가 저장되었습니다."}
    - 이 경우 tool을 사용하지 않고 입력 데이터를 그대로 반환합니다
 </처리 방법>
 
 <작업순서>
 1. 사용자의 요청 유형을 판단합니다:
-   - 질문 형태인가? (질문, 조회, "~했어?", "~뭐야?") → generate_auto_response
-   - 일기 생성 요청인가? (일기 작성, 요약 생성) → generate_auto_summerize
-   - 단순 데이터 입력인가? (사실 진술, 활동 기록) → no_processing
+   - 질문 형태인가? (질문, 조회, "~했어?", "~뭐야?") → generate_auto_response → type: "answer"
+   - 일기 생성 요청인가? (일기 작성, 요약 생성) → generate_auto_summerize → type: "diary"
+   - 단순 데이터 입력인가? (사실 진술, 활동 기록) → no_processing → type: "data"
 
 2. 질문이면 generate_auto_response tool을 호출합니다
    - user_input 전체를 question 파라미터로 전달
+   - tool 결과를 content에 담고, type은 "answer", message는 "질문에 대한 답변입니다."
 
 3. 일기 생성이면 generate_auto_summerize tool을 호출합니다
+   - tool 결과를 content에 담고, type은 "diary", message는 "일기가 생성되었습니다."
 
-4. 단순 데이터 입력이면 tool을 사용하지 않고 입력 데이터를 그대로 반환합니다
+4. 단순 데이터 입력이면 tool을 사용하지 않습니다
+   - type: "data", content: "", message: "메시지가 저장되었습니다."
 
 5. tool 결과 처리:
-   - tool 결과가 딕셔너리 형태면 "response" 키의 값을 추출
-   - no_processing인 경우 입력 데이터를 그대로 사용
+   - tool 결과가 딕셔너리 형태면 "response" 키의 값을 추출하여 content에 담습니다
+   - no_processing인 경우 content는 빈 문자열("")입니다
 </작업순서>
+
+<응답 형식>
+반드시 다음 형식으로 응답하세요:
+- type: "data", "answer", "diary" 중 하나
+- content: 생성된 내용 (data인 경우 빈 문자열)
+- message: 적절한 응답 메시지
+</응답 형식>
 
 <필수규칙>
 - 질문이나 일기 생성 요청은 반드시 해당 tool을 사용해야 합니다
-- 단순 데이터 입력은 tool을 사용하지 않고 그대로 반환합니다
+- 단순 데이터 입력은 tool을 사용하지 않고 type: "data"로 반환합니다
 - tool 결과를 수정하거나 추가 설명을 붙이지 마세요
+- 응답은 반드시 type, content, message 세 필드를 포함해야 합니다
 </필수규칙>
 
 """
@@ -78,8 +91,9 @@ ORCHESTRATOR_PROMPT = """
 class OrchestratorResult(BaseModel):
     """Orchestrator result."""
 
-    request_type: str = Field(description="요청 타입: summerize, question, 또는 no_processing")
-    result: str = Field(description="생성된 결과")
+    type: str = Field(description="응답 타입: data, answer, 또는 diary")
+    content: str = Field(description="생성된 결과 내용")
+    message: str = Field(description="응답 메시지")
 
 
 def orchestrate_request(
@@ -98,6 +112,9 @@ def orchestrate_request(
 
     Returns:
         Dict[str, Any]: 처리 결과
+            - type: "data" (데이터 저장), "answer" (질문 답변), "diary" (일기 생성)
+            - content: 생성된 내용 (data인 경우 빈 문자열)
+            - message: 응답 메시지
     """
 
     # 각 요청마다 새로운 Agent 생성
