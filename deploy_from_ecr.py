@@ -91,6 +91,10 @@ try:
                     'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
                     'AWS_REGION': region,
                     'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
+                },
+                lifecycleConfiguration={
+                    'idleRuntimeSessionTimeout': 3600,  # 1시간 (기본 15분에서 증가)
+                    'maxLifetime': 28800  # 8시간
                 }
             )
             print("✅ Agent Runtime 업데이트 완료!")
@@ -113,6 +117,10 @@ try:
                     'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
                     'AWS_REGION': region,
                     'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
+                },
+                lifecycleConfiguration={
+                    'idleRuntimeSessionTimeout': 3600,  # 1시간
+                    'maxLifetime': 28800  # 8시간
                 }
             )
             print("✅ Agent Runtime 생성 완료!")
@@ -136,6 +144,10 @@ try:
                 'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
                 'AWS_REGION': region,
                 'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
+            },
+            lifecycleConfiguration={
+                'idleRuntimeSessionTimeout': 3600,  # 1시간
+                'maxLifetime': 28800  # 8시간
             }
         )
         print("✅ Agent Runtime 생성 완료!")
