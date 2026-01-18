@@ -1,0 +1,50 @@
+name: Deploy to Agent Core
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'ECR Image Tag (commit SHA or "latest")'
+        required: false
+        default: 'latest'
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy to Agent Core Runtime
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install boto3
+
+    - name: Deploy to Agent Core Runtime
+      env:
+        IMAGE_TAG: ${{ inputs.image_tag }}
+      run: |
+        echo "🚀 Deploying with image tag: $IMAGE_TAG"
+        python deploy_from_ecr.py
+
+    - name: Output deployment info
+      run: |
+        echo "::notice title=Deployment Complete::Agent Core Runtime deployed with tag ${{ inputs.image_tag }}"

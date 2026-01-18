@@ -21,11 +21,35 @@ Knowledge Base를 검색하여 사용자 질문에 답변
 1. AWS Secrets Manager에 `agent-core-secret` 생성
 2. GitHub Secrets 설정: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 
-### 자동 배포
+### 배포 전략
+
+#### 자동 배포 (기본) ✅
+
 ```bash
 git push origin main
 ```
-GitHub Actions가 자동으로 ECR 빌드 및 Agent Core Runtime 배포
+
+**자동 실행 흐름:**
+1. ECR 이미지 빌드 및 푸시 (commit SHA 태그)
+2. Agent Core Runtime 자동 배포 (방금 빌드된 이미지 사용)
+
+**장점:**
+- 완전 자동화
+- 빠른 배포
+- 이미지 태그와 commit SHA 자동 매칭
+
+#### 수동 배포 (선택)
+
+**특정 이미지로 재배포:**
+- GitHub Actions 탭 > "Deploy to Agent Core" 선택
+- "Run workflow" 클릭
+- Image tag 입력 (commit SHA 또는 "latest")
+
+**로컬에서 배포:**
+```bash
+export IMAGE_TAG=abc123def456
+python deploy_from_ecr.py
+```
 
 ### 로그 확인
 ```bash
@@ -49,7 +73,8 @@ https://github.com/YOUR_USERNAME/YOUR_REPO/actions
 ```
 .
 ├── .github/workflows/
-│   └── deploy-to-ecr.yml       # CI/CD 파이프라인
+│   ├── deploy-to-ecr.yml       # Stage 1: ECR 빌드 (자동)
+│   └── deploy-agent-core.yml   # Stage 2: Agent Core 배포 (자동 트리거)
 ├── agent/
 │   ├── utils/
 │   │   └── secrets.py          # Secrets Manager 통합
