@@ -16,10 +16,17 @@ try:
     from ..utils.secrets import get_config
     config = get_config()
     BEDROCK_MODEL_ARN = config.get('BEDROCK_MODEL_ARN', '')
+    if not BEDROCK_MODEL_ARN:
+        # 환경변수에서 시도
+        BEDROCK_MODEL_ARN = os.environ.get('BEDROCK_MODEL_ARN', '')
+    if not BEDROCK_MODEL_ARN:
+        raise ValueError("BEDROCK_MODEL_ARN이 설정되지 않았습니다.")
 except Exception as e:
     print(f"⚠️  설정을 가져올 수 없습니다: {str(e)}")
-    # 환경변수 또는 기본값 사용
-    BEDROCK_MODEL_ARN = os.environ.get('BEDROCK_MODEL_ARN', '<your-bedrock-model-arn>')
+    # 환경변수에서 시도
+    BEDROCK_MODEL_ARN = os.environ.get('BEDROCK_MODEL_ARN', '')
+    if not BEDROCK_MODEL_ARN:
+        raise ValueError("BEDROCK_MODEL_ARN이 설정되지 않았습니다. Secrets Manager 또는 환경변수를 확인하세요.")
 
 # Configure the root strands logger
 logging.getLogger("strands").setLevel(logging.INFO)
