@@ -1,18 +1,29 @@
 # Dockerfile for Agent Core Runtime
-FROM public.ecr.aws/lambda/python:3.11
+# Agent Core Runtime은 HTTP 서버가 필요함 (/ping, /invocations 엔드포인트)
+FROM public.ecr.aws/docker/library/python:3.11-slim
 
 # 작업 디렉토리 설정
-WORKDIR ${LAMBDA_TASK_ROOT}
+WORKDIR /app
+
+# 시스템 패키지 업데이트
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 # pip 업그레이드
 RUN pip install --upgrade pip
 
-# Lambda용 requirements 복사 및 의존성 설치
+# requirements 복사 및 의존성 설치
 COPY requirements-lambda.txt .
 RUN pip install --no-cache-dir -r requirements-lambda.txt
 
-# 애플리케이션 코드 복사
-COPY agent/ ${LAMBDA_TASK_ROOT}/
+# FastAPI와 uvicorn 추가 설치
+RUN pip install --no-cache-dir fastapi uvicorn[standard]
 
-# Lambda 핸들러 설정 (간단한 경로)
-CMD ["handler.lambda_handler"]
+# 애플리케이션 코드 복사
+COPY agent/ /app/
+
+# 포트 8080 노출 (Agent Core Runtime 필수)
+EXPOSE 8080
+
+# FastAPI 서버 실행
+CMD ["python", "server.py"]
