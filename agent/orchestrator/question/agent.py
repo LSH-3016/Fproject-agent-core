@@ -88,54 +88,49 @@ def generate_auto_response(question: str, user_id: str = None, current_date: str
         return {"response": "Knowledge Base 설정이 올바르지 않습니다. 관리자에게 문의하세요."}
 
     try:
-        # retrieve tool을 직접 호출하여 검색
-        print(f"[DEBUG] Calling retrieve tool directly...")
+        # system prompt 구성
+        system_prompt = RESPONSE_SYSTEM_PROMPT + f"\nSELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}"
         
-        # 검색 쿼리 구성
-        search_query = question
         if user_id:
-            search_query = f"user_id:{user_id} {question}"
+            system_prompt += f"\n\n<context>\n사용자 ID: {user_id}\n"
         if current_date:
-            search_query = f"{search_query} date:{current_date}"
-        
-        print(f"[DEBUG] Search query: {search_query}")
-        
-        # retrieve 직접 호출
-        from strands_tools import retrieve as retrieve_tool
-        retrieve_result = retrieve_tool(search_query)
-        
-        print(f"[DEBUG] Retrieve result type: {type(retrieve_result)}")
-        print(f"[DEBUG] Retrieve result: {str(retrieve_result)[:500]}...")
-        
-        # 검색 결과가 없으면
-        if not retrieve_result or (isinstance(retrieve_result, str) and len(retrieve_result.strip()) < 10):
-            return {"response": f"{current_date or '해당 날짜'}의 일기 기록을 찾을 수 없습니다."}
-        
-        # 검색 결과를 바탕으로 답변 생성
-        system_prompt = f"""
-당신은 일기 데이터를 분석하여 질문에 답변하는 AI입니다.
+            system_prompt += f"현재 날짜: {current_date}\n</context>"
 
-아래는 Knowledge Base에서 검색한 일기 내용입니다:
-{retrieve_result}
+        # Agent 생성 (retrieve tool 포함)
+        print(f"[DEBUG] Creating Agent with retrieve tool...")
+        auto_response_agent = Agent(
+            tools=[retrieve],
+            system_prompt=system_prompt,
+        )
 
-위 내용을 바탕으로 사용자의 질문에 답변하세요.
-- 검색된 내용에 없는 정보는 추측하지 마세요
-- 간결하고 정확하게 답변하세요
-- 공손한 톤을 유지하세요
+        # 검색 쿼리 구성
+        search_query = f"""
+당신은 반드시 retrieve 도구를 사용하여 지식베이스를 검색해야 합니다.
+
+검색 조건:
+- 사용자 ID: {user_id if user_id else '미제공'}
+- 현재 날짜: {current_date if current_date else '미제공'}
+- 질문: {question}
+
+지금 즉시 retrieve 도구를 호출하여 관련 정보를 검색하세요.
+검색 결과를 바탕으로만 답변하세요.
+검색 결과가 없으면 "해당 날짜의 일기 기록을 찾을 수 없습니다"라고 답변하세요.
 """
         
-        # 답변 생성용 Agent
-        from strands import Agent
-        answer_agent = Agent(
-            system_prompt=system_prompt
-        )
+        print(f"[DEBUG] Calling agent with retrieve tool...")
+        response = auto_response_agent(search_query)
         
-        response = answer_agent(f"질문: {question}")
-        
-        print(f"[DEBUG] Final response: {str(response)[:200]}...")
+        print(f"[DEBUG] Agent 응답 완료")
+        print(f"[DEBUG] Response: {str(response)[:200]}...")
+
+        # tool_result 추출
+        tool_results = filter_tool_result(auto_response_agent)
+        print(f"[DEBUG] Tool results count: {len(tool_results)}")
+
+        # 결과 반환
+        result = {"response": str(response)}
         print(f"[DEBUG] ========== generate_auto_response 완료 ==========")
-        
-        return {"response": str(response)}
+        return result
         
     except Exception as e:
         print(f"[ERROR] ========== generate_auto_response 실패 ==========")
