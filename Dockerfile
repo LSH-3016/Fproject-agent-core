@@ -12,7 +12,7 @@ COPY requirements-lambda.txt .
 RUN pip install --no-cache-dir -r requirements-lambda.txt
 
 # 애플리케이션 코드 복사
-COPY agent/ ${LAMBDA_TASK_ROOT}/agent/
+COPY agent/ ${LAMBDA_TASK_ROOT}/
 
 # Lambda 핸들러 설정
-CMD ["agent.agentcore_agent.lambda_handler"]
+CMD ["agentcore_agent.lambda_handler"]
