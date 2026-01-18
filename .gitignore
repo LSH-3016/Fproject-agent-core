@@ -1,0 +1,45 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# 가상환경 폴더
+venv/
+.venv/
+
+# 환경 변수 파일
+.env
+
+# IAM Policy 파일 (임시)
+trust-policy.json
+secrets-policy.json
+
+# 로그 파일
+*.log
+logs/
+
+# 테스트 캐시 / 커버리지
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE 설정 파일
+.vscode/
+.idea/
+
+# 빌드 파일
+build/
+dist/
+*.egg-info/
+
+# 데이터베이스 파일 (예: SQLite)
+*.db
+*.sqlite3
+
+# 테스트 파일
+*_test.py
+test_*.py
+result.txt
+
+# OS 파일
+.DS_Store
+Thumbs.db
