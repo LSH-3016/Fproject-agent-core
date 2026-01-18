@@ -71,6 +71,11 @@ def generate_auto_response(question: str, user_id: str = None, current_date: str
     Returns:
         Dict[str, Any]: 생성한 답변
     """
+    
+    print(f"[DEBUG] generate_auto_response 호출됨")
+    print(f"[DEBUG] question: {question}")
+    print(f"[DEBUG] user_id: {user_id}")
+    print(f"[DEBUG] current_date: {current_date}")
 
     # system prompt 구성
     system_prompt = RESPONSE_SYSTEM_PROMPT + f"\nSELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}"
@@ -95,16 +100,27 @@ def generate_auto_response(question: str, user_id: str = None, current_date: str
         search_instruction += f"현재 날짜: {current_date}\n"
     
     search_instruction += f"질문: {question}"
+    
+    print(f"[DEBUG] search_instruction: {search_instruction}")
 
-    # 리뷰에 대한 자동 응답 생성
-    response = auto_response_agent(search_instruction)
+    try:
+        # 리뷰에 대한 자동 응답 생성
+        response = auto_response_agent(search_instruction)
+        print(f"[DEBUG] Agent 응답: {response}")
 
-    # tool_result 를 추출
-    tool_results = filter_tool_result(auto_response_agent)
+        # tool_result 를 추출
+        tool_results = filter_tool_result(auto_response_agent)
+        print(f"[DEBUG] Tool results: {tool_results}")
 
-    # 결과 반환
-    result = {"response": str(response)}
-    return result
+        # 결과 반환
+        result = {"response": str(response)}
+        return result
+        
+    except Exception as e:
+        print(f"[ERROR] generate_auto_response 실패: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"response": f"답변 생성 중 오류가 발생했습니다: {str(e)}"}
 
 def filter_tool_result(agent: Agent) -> List:
     """

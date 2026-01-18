@@ -86,6 +86,11 @@ try:
                 roleArn=EXECUTION_ROLE,
                 networkConfiguration={
                     'networkMode': 'PUBLIC'
+                },
+                environmentVariables={
+                    'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
+                    'AWS_REGION': region,
+                    'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
                 }
             )
             print("✅ Agent Runtime 업데이트 완료!")
@@ -103,6 +108,11 @@ try:
                 roleArn=EXECUTION_ROLE,
                 networkConfiguration={
                     'networkMode': 'PUBLIC'  # VPC 사용 안 함
+                },
+                environmentVariables={
+                    'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
+                    'AWS_REGION': region,
+                    'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
                 }
             )
             print("✅ Agent Runtime 생성 완료!")
@@ -121,6 +131,11 @@ try:
             roleArn=EXECUTION_ROLE,
             networkConfiguration={
                 'networkMode': 'PUBLIC'  # VPC 사용 안 함
+            },
+            environmentVariables={
+                'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
+                'AWS_REGION': region,
+                'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
             }
         )
         print("✅ Agent Runtime 생성 완료!")
@@ -134,6 +149,10 @@ try:
     print(f"Image URI: {ecr_image_uri}")
     print(f"Image Tag: {IMAGE_TAG}")
     print(f"Network Mode: PUBLIC (VPC 사용 안 함)")
+    print(f"Environment Variables:")
+    print(f"  - KNOWLEDGE_BASE_ID: {config.get('KNOWLEDGE_BASE_ID', '')}")
+    print(f"  - AWS_REGION: {region}")
+    print(f"  - BEDROCK_MODEL_ARN: {config.get('BEDROCK_MODEL_ARN', '')}")
     print("=" * 60)
     
 except Exception as e:
