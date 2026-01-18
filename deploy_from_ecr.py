@@ -76,7 +76,7 @@ try:
                 agentRuntimeArn=existing_runtime['agentRuntimeArn'],
                 agentRuntimeArtifact={
                     'containerConfiguration': {
-                        'imageUri': ecr_image_uri
+                        'containerUri': ecr_image_uri  # ✅ imageUri → containerUri
                     }
                 }
             )
@@ -89,7 +89,7 @@ try:
                 agentRuntimeName=AGENT_NAME,
                 agentRuntimeArtifact={
                     'containerConfiguration': {
-                        'imageUri': ecr_image_uri
+                        'containerUri': ecr_image_uri  # ✅ imageUri → containerUri
                     }
                 },
                 roleArn=EXECUTION_ROLE,
@@ -107,7 +107,7 @@ try:
             agentRuntimeName=AGENT_NAME,
             agentRuntimeArtifact={
                 'containerConfiguration': {
-                    'imageUri': ecr_image_uri
+                    'containerUri': ecr_image_uri  # ✅ imageUri → containerUri
                 }
             },
             roleArn=EXECUTION_ROLE,
