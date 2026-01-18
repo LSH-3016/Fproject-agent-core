@@ -72,12 +72,13 @@ SELLER_ANSWER_PROMPT = """
 """
 
 @tool
-def generate_auto_response(question: str) -> Dict[str, Any]:
+def generate_auto_response(question: str, user_id: str = None) -> Dict[str, Any]:
     """
     질문에 대한 답변을 생성하는 메인 함수
 
     Args:
-        question (str): 분석할 답변
+        question (str): 사용자의 질문
+        user_id (str): 사용자 ID (Knowledge Base 검색 필터용)
 
     Returns:
         Dict[str, Any]: 생성한 답변
@@ -89,11 +90,17 @@ def generate_auto_response(question: str) -> Dict[str, Any]:
         system_prompt=RESPONSE_SYSTEM_PROMPT
         + f"""
         SELLER_ANSWER_PROMPT: {SELLER_ANSWER_PROMPT}
-        """,
+        """
+        + (f"\n<user_id>{user_id}</user_id>" if user_id else ""),
     )
 
+    # user_id가 있으면 검색 쿼리에 포함
+    search_query = question
+    if user_id:
+        search_query = f"user_id: {user_id}\n질문: {question}"
+
     # 리뷰에 대한 자동 응답 생성
-    response = auto_response_agent(question)
+    response = auto_response_agent(search_query)
 
     # tool_result 를 추출
     tool_results = filter_tool_result(auto_response_agent)

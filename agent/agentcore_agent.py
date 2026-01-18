@@ -32,12 +32,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             user_input = event.get('user_input', '')
         
         # 추가 파라미터 추출
+        user_id = event.get('user_id')
         request_type = event.get('request_type')
         temperature = event.get('temperature')
         
         # orchestrator 실행
         result = orchestrate_request(
             user_input=user_input,
+            user_id=user_id,
             request_type=request_type,
             temperature=temperature
         )
