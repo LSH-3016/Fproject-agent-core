@@ -32,6 +32,9 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Create ECR repository if not exists
       run: |
         aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} || \
@@ -43,15 +46,14 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-        echo "🔨 Docker 이미지 빌드 중..."
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "🔨 Docker 이미지 빌드 중 (ARM64 아키텍처)..."
+        docker buildx create --use --name arm64-builder || docker buildx use arm64-builder
+        docker buildx build --platform linux/arm64 \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+          -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+          --push .
         
-        echo "📤 ECR에 푸시 중..."
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        
-        echo "✅ ECR 이미지 푸시 완료"
+        echo "✅ ECR 이미지 푸시 완료 (ARM64)"
         echo "Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
     - name: Set up Python
