@@ -75,40 +75,44 @@ try:
             response = client.update_agent_runtime(
                 agentRuntimeArn=existing_runtime['agentRuntimeArn'],
                 agentRuntimeArtifact={
-                    'imageUri': ecr_image_uri
+                    'containerConfiguration': {
+                        'imageUri': ecr_image_uri
+                    }
                 }
             )
             print("✅ Agent Runtime 업데이트 완료!")
             agent_arn = existing_runtime['agentRuntimeArn']
         else:
-            # 새 Runtime 생성
-            print("\n새 Agent Runtime 생성 중...")
+            # 새 Runtime 생성 (Public 모드)
+            print("\n새 Agent Runtime 생성 중 (Public 모드)...")
             response = client.create_agent_runtime(
                 agentRuntimeName=AGENT_NAME,
                 agentRuntimeArtifact={
-                    'imageUri': ecr_image_uri
+                    'containerConfiguration': {
+                        'imageUri': ecr_image_uri
+                    }
                 },
                 roleArn=EXECUTION_ROLE,
                 networkConfiguration={
-                    'subnetIds': [],  # VPC 사용 안 함
-                    'securityGroupIds': []
+                    'networkMode': 'PUBLIC'  # VPC 사용 안 함
                 }
             )
             print("✅ Agent Runtime 생성 완료!")
             agent_arn = response['agentRuntimeArn']
         
     except client.exceptions.ResourceNotFoundException:
-        # Runtime이 없으면 새로 생성
-        print("\n새 Agent Runtime 생성 중...")
+        # Runtime이 없으면 새로 생성 (Public 모드)
+        print("\n새 Agent Runtime 생성 중 (Public 모드)...")
         response = client.create_agent_runtime(
             agentRuntimeName=AGENT_NAME,
             agentRuntimeArtifact={
-                'imageUri': ecr_image_uri
+                'containerConfiguration': {
+                    'imageUri': ecr_image_uri
+                }
             },
             roleArn=EXECUTION_ROLE,
             networkConfiguration={
-                'subnetIds': [],  # VPC 사용 안 함
-                'securityGroupIds': []
+                'networkMode': 'PUBLIC'  # VPC 사용 안 함
             }
         )
         print("✅ Agent Runtime 생성 완료!")
@@ -121,6 +125,7 @@ try:
     print(f"Agent Runtime ARN: {agent_arn}")
     print(f"Image URI: {ecr_image_uri}")
     print(f"Image Tag: {IMAGE_TAG}")
+    print(f"Network Mode: PUBLIC (VPC 사용 안 함)")
     print("=" * 60)
     
 except Exception as e:
