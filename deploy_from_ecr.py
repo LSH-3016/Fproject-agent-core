@@ -70,18 +70,26 @@ try:
                 break
         
         if existing_runtime:
+            # ARN에서 ID 추출 (마지막 부분)
+            runtime_arn = existing_runtime['agentRuntimeArn']
+            runtime_id = runtime_arn.split('/')[-1]
+            
             # 기존 Runtime 업데이트
-            print("\n기존 Runtime 업데이트 중...")
+            print(f"\n기존 Runtime 업데이트 중 (ID: {runtime_id})...")
             response = client.update_agent_runtime(
-                agentRuntimeArn=existing_runtime['agentRuntimeArn'],
+                agentRuntimeId=runtime_id,
                 agentRuntimeArtifact={
                     'containerConfiguration': {
-                        'containerUri': ecr_image_uri  # ✅ imageUri → containerUri
+                        'containerUri': ecr_image_uri
                     }
+                },
+                roleArn=EXECUTION_ROLE,
+                networkConfiguration={
+                    'networkMode': 'PUBLIC'
                 }
             )
             print("✅ Agent Runtime 업데이트 완료!")
-            agent_arn = existing_runtime['agentRuntimeArn']
+            agent_arn = runtime_arn
         else:
             # 새 Runtime 생성 (Public 모드)
             print("\n새 Agent Runtime 생성 중 (Public 모드)...")
