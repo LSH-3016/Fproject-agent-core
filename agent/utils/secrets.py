@@ -29,9 +29,11 @@ def get_secret(secret_name: str, region_name: str = None) -> dict:
     )
     
     try:
+        print(f"[Secrets] Fetching secret: {secret_name} from region: {region_name}")
         get_secret_value_response = client.get_secret_value(
             SecretId=secret_name
         )
+        print(f"[Secrets] Secret fetched successfully")
     except ClientError as e:
         # 에러 처리
         error_code = e.response['Error']['Code']
@@ -51,8 +53,18 @@ def get_secret(secret_name: str, region_name: str = None) -> dict:
     
     # 시크릿 값 파싱
     if 'SecretString' in get_secret_value_response:
-        secret = get_secret_value_response['SecretString']
-        return json.loads(secret)
+        secret_string = get_secret_value_response['SecretString']
+        print(f"[Secrets] Secret string length: {len(secret_string)}")
+        print(f"[Secrets] Secret string preview: {secret_string[:100]}...")
+        
+        try:
+            secret_dict = json.loads(secret_string)
+            print(f"[Secrets] Successfully parsed JSON with {len(secret_dict)} keys")
+            return secret_dict
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON 파싱 실패: {str(e)}")
+            print(f"❌ Secret string: {secret_string}")
+            raise ValueError(f"Secret '{secret_name}'의 JSON 파싱 실패: {str(e)}")
     else:
         # 바이너리 시크릿의 경우
         import base64
@@ -74,18 +86,17 @@ def get_config() -> dict:
     try:
         config = get_secret(secret_name)
         print(f"✅ Secrets Manager에서 설정을 가져왔습니다: {secret_name}")
+        
+        # 필수 키 검증
+        required_keys = ['IAM_ROLE_ARN', 'KNOWLEDGE_BASE_ID', 'AWS_REGION']
+        missing_keys = [key for key in required_keys if not config.get(key)]
+        
+        if missing_keys:
+            print(f"⚠️  경고: 다음 필수 키가 누락되었습니다: {', '.join(missing_keys)}")
+        
         return config
     except Exception as e:
-        print(f"⚠️  Secrets Manager에서 설정을 가져올 수 없습니다: {str(e)}")
-        print("⚠️  환경변수를 사용합니다.")
-        
-        # 환경변수에서 가져오기 (Fallback)
-        return {
-            'KNOWLEDGE_BASE_ID': os.environ.get('KNOWLEDGE_BASE_ID', ''),
-            'AWS_REGION': os.environ.get('AWS_REGION', 'us-east-1'),
-            'BEDROCK_MODEL_ARN': os.environ.get('BEDROCK_MODEL_ARN', ''),
-            'IAM_ROLE_ARN': os.environ.get('IAM_ROLE_ARN', ''),
-            'BEDROCK_CLAUDE_MODEL_ID': os.environ.get('BEDROCK_CLAUDE_MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
-            'BEDROCK_NOVA_CANVAS_MODEL_ID': os.environ.get('BEDROCK_NOVA_CANVAS_MODEL_ID', 'amazon.nova-canvas-v1:0'),
-            'BEDROCK_LLM_MODEL_ID': os.environ.get('BEDROCK_LLM_MODEL_ID', 'us.anthropic.claude-sonnet-4-20250514-v1:0'),
-        }
+        print(f"❌ CRITICAL: Secrets Manager에서 설정을 가져올 수 없습니다: {str(e)}")
+        print(f"❌ Secret 이름: {secret_name}")
+        print(f"❌ Region: {os.environ.get('AWS_REGION', 'us-east-1')}")
+        raise RuntimeError(f"Secrets Manager 접근 실패. 배포를 중단합니다: {str(e)}")

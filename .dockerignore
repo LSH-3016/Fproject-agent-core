@@ -7,11 +7,16 @@ __pycache__/
 venv/
 env/
 ENV/
+*.egg-info/
+dist/
+build/
 
 # Tests
 *_test.py
 tests/
 test_*.py
+pytest_cache/
+.pytest_cache/
 
 # Git
 .git/
@@ -21,17 +26,38 @@ test_*.py
 # Documentation
 *.md
 docs/
+README.md
+DEPLOYMENT_OPTIMIZATION.md
+SECRET_CONFIG_GUIDE.md
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+.editorconfig
 
 # OS
 .DS_Store
 Thumbs.db
+*.log
 
-# Deployment
+# Deployment scripts (배포 스크립트는 이미지에 불필요)
+deploy_from_ecr.py
 deploy_agent.py
 DEPLOYMENT_GUIDE.md
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Environment files (런타임에 Secrets Manager 사용)
+.env
+.env.*
+*.env

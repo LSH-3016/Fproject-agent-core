@@ -7,38 +7,60 @@ import json
 import sys
 import os
 
-# Secrets Manager에서 설정 가져오기
+# Secrets Manager에서 설정 가져오기 (필수)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'agent'))
-from utils.secrets import get_config
 
-config = get_config()
+print("=" * 60)
+print("🔐 Secrets Manager에서 설정 로드 중...")
+print("=" * 60)
+
+try:
+    from utils.secrets import get_config
+    config = get_config()
+    print("✅ Secrets Manager 로드 성공")
+except Exception as e:
+    print(f"❌ CRITICAL ERROR: Secrets Manager 접근 실패")
+    print(f"❌ Error: {str(e)}")
+    print(f"❌ Secret 이름: agent-core-secret")
+    print(f"❌ Region: {os.environ.get('AWS_REGION', 'us-east-1')}")
+    print("\n💡 해결 방법:")
+    print("1. GitHub Actions의 AWS credentials 권한 확인")
+    print("2. IAM 정책에 secretsmanager:GetSecretValue 권한 추가")
+    print("3. Secret 'agent-core-secret'이 us-east-1에 존재하는지 확인")
+    sys.exit(1)
 
 # AWS 세션 설정
 boto_session = boto3.Session()
-region = config.get('AWS_REGION', boto_session.region_name)
+region = config.get('AWS_REGION', 'us-east-1')
 account_id = boto_session.client('sts').get_caller_identity()['Account']
 
 # ========================================
-# 설정값 (Secrets Manager에서 자동으로 가져옴)
+# 설정값 (Secrets Manager에서만 가져옴)
 # ========================================
 
 # ECR 설정
 ECR_REPOSITORY = "diary-orchestrator-agent"
-# 환경변수에서 이미지 태그 가져오기 (GitHub Actions에서 설정)
 IMAGE_TAG = os.environ.get('IMAGE_TAG', 'latest')
 
 # Agent 설정
 AGENT_NAME = "diary_orchestrator_agent"
 
-# IAM Role ARN (Secrets Manager에서 가져옴)
-EXECUTION_ROLE = config.get('IAM_ROLE_ARN', '')
+# IAM Role ARN (필수)
+EXECUTION_ROLE = config.get('IAM_ROLE_ARN', '').strip()
+
+# Knowledge Base 설정
+KNOWLEDGE_BASE_ID = config.get('KNOWLEDGE_BASE_ID', '').strip()
+BEDROCK_MODEL_ARN = config.get('BEDROCK_MODEL_ARN', '').strip()
+BEDROCK_CLAUDE_MODEL_ID = config.get('BEDROCK_CLAUDE_MODEL_ID', '').strip()
+BEDROCK_NOVA_CANVAS_MODEL_ID = config.get('BEDROCK_NOVA_CANVAS_MODEL_ID', '').strip()
+BEDROCK_LLM_MODEL_ID = config.get('BEDROCK_LLM_MODEL_ID', '').strip()
 
 # ========================================
 
 # ECR 이미지 URI 생성
 ecr_image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/{ECR_REPOSITORY}:{IMAGE_TAG}"
 
-print("=" * 60)
+print("\n" + "=" * 60)
 print("🚀 Agent Core Runtime 배포 시작")
 print("=" * 60)
 print(f"ECR Image URI: {ecr_image_uri}")
@@ -47,11 +69,46 @@ print(f"Agent Name: {AGENT_NAME}")
 print(f"Region: {region}")
 print("=" * 60)
 
-# Execution Role 확인
+# 필수값 검증
 if not EXECUTION_ROLE:
-    print("❌ 오류: IAM Role ARN을 Secrets Manager에서 가져올 수 없습니다!")
-    print("   Secrets Manager에 'agent-core-secret'이 올바르게 설정되어 있는지 확인하세요.")
+    print("❌ CRITICAL ERROR: IAM_ROLE_ARN이 Secrets Manager에 없습니다!")
+    print("   다음 명령으로 추가하세요:")
+    print(f"   aws secretsmanager update-secret --secret-id agent-core-secret --secret-string '{{...\"IAM_ROLE_ARN\":\"arn:aws:iam::...\"}}'")
     sys.exit(1)
+
+if not KNOWLEDGE_BASE_ID:
+    print("⚠️  경고: KNOWLEDGE_BASE_ID가 비어있습니다.")
+
+print(f"\n✅ Execution Role: {EXECUTION_ROLE[:50]}...")
+print(f"✅ Knowledge Base ID: {KNOWLEDGE_BASE_ID}")
+
+# Bedrock AgentCore 클라이언트
+client = boto3.client('bedrock-agentcore-control', region_name=region)
+
+# 환경변수 구성
+environment_variables = {
+    'AWS_REGION': region,
+}
+
+# 선택적 환경변수 추가
+if KNOWLEDGE_BASE_ID:
+    environment_variables['KNOWLEDGE_BASE_ID'] = KNOWLEDGE_BASE_ID
+if BEDROCK_MODEL_ARN:
+    environment_variables['BEDROCK_MODEL_ARN'] = BEDROCK_MODEL_ARN
+if BEDROCK_CLAUDE_MODEL_ID:
+    environment_variables['BEDROCK_CLAUDE_MODEL_ID'] = BEDROCK_CLAUDE_MODEL_ID
+if BEDROCK_NOVA_CANVAS_MODEL_ID:
+    environment_variables['BEDROCK_NOVA_CANVAS_MODEL_ID'] = BEDROCK_NOVA_CANVAS_MODEL_ID
+if BEDROCK_LLM_MODEL_ID:
+    environment_variables['BEDROCK_LLM_MODEL_ID'] = BEDROCK_LLM_MODEL_ID
+
+print(f"\n환경변수 설정 ({len(environment_variables)}개):")
+for key in sorted(environment_variables.keys()):
+    value = environment_variables[key]
+    if 'ARN' in key or 'ID' in key:
+        print(f"  ✓ {key}: {value[:30]}..." if len(value) > 30 else f"  ✓ {key}: {value}")
+    else:
+        print(f"  ✓ {key}: {value}")
 
 # Bedrock AgentCore 클라이언트
 client = boto3.client('bedrock-agentcore-control', region_name=region)
@@ -87,11 +144,7 @@ try:
                 networkConfiguration={
                     'networkMode': 'PUBLIC'
                 },
-                environmentVariables={
-                    'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
-                    'AWS_REGION': region,
-                    'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
-                },
+                environmentVariables=environment_variables,
                 lifecycleConfiguration={
                     'idleRuntimeSessionTimeout': 3600,  # 1시간 (기본 15분에서 증가)
                     'maxLifetime': 28800  # 8시간
@@ -113,11 +166,7 @@ try:
                 networkConfiguration={
                     'networkMode': 'PUBLIC'  # VPC 사용 안 함
                 },
-                environmentVariables={
-                    'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
-                    'AWS_REGION': region,
-                    'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
-                },
+                environmentVariables=environment_variables,
                 lifecycleConfiguration={
                     'idleRuntimeSessionTimeout': 3600,  # 1시간
                     'maxLifetime': 28800  # 8시간
@@ -140,11 +189,7 @@ try:
             networkConfiguration={
                 'networkMode': 'PUBLIC'  # VPC 사용 안 함
             },
-            environmentVariables={
-                'KNOWLEDGE_BASE_ID': config.get('KNOWLEDGE_BASE_ID', ''),
-                'AWS_REGION': region,
-                'BEDROCK_MODEL_ARN': config.get('BEDROCK_MODEL_ARN', '')
-            },
+            environmentVariables=environment_variables,
             lifecycleConfiguration={
                 'idleRuntimeSessionTimeout': 3600,  # 1시간
                 'maxLifetime': 28800  # 8시간
@@ -161,10 +206,12 @@ try:
     print(f"Image URI: {ecr_image_uri}")
     print(f"Image Tag: {IMAGE_TAG}")
     print(f"Network Mode: PUBLIC (VPC 사용 안 함)")
-    print(f"Environment Variables:")
-    print(f"  - KNOWLEDGE_BASE_ID: {config.get('KNOWLEDGE_BASE_ID', '')}")
-    print(f"  - AWS_REGION: {region}")
-    print(f"  - BEDROCK_MODEL_ARN: {config.get('BEDROCK_MODEL_ARN', '')}")
+    print(f"\n환경변수:")
+    for key, value in environment_variables.items():
+        if 'ARN' in key or 'ID' in key:
+            print(f"  - {key}: {value[:30]}..." if len(value) > 30 else f"  - {key}: {value}")
+        else:
+            print(f"  - {key}: {value}")
     print("=" * 60)
     
 except Exception as e:
