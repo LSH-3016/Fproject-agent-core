@@ -57,6 +57,11 @@ def get_secret(secret_name: str, region_name: str = None) -> dict:
         print(f"[Secrets] Secret string length: {len(secret_string)}")
         print(f"[Secrets] Secret string preview: {secret_string[:100]}...")
         
+        # 작은따옴표로 감싸진 경우 제거 (AWS CLI 출력 형식)
+        if secret_string.startswith("'") and secret_string.endswith("'"):
+            print(f"[Secrets] Removing surrounding single quotes from secret string")
+            secret_string = secret_string[1:-1]
+        
         try:
             secret_dict = json.loads(secret_string)
             print(f"[Secrets] Successfully parsed JSON with {len(secret_dict)} keys")
@@ -64,6 +69,8 @@ def get_secret(secret_name: str, region_name: str = None) -> dict:
         except json.JSONDecodeError as e:
             print(f"❌ JSON 파싱 실패: {str(e)}")
             print(f"❌ Secret string: {secret_string}")
+            print(f"❌ First 50 chars: {repr(secret_string[:50])}")
+            print(f"❌ Last 50 chars: {repr(secret_string[-50:])}")
             raise ValueError(f"Secret '{secret_name}'의 JSON 파싱 실패: {str(e)}")
     else:
         # 바이너리 시크릿의 경우
