@@ -1,7 +1,6 @@
 """
-Image Generator Tools - DB 없이 텍스트 → 이미지 생성 → S3 업로드
-S3 버킷: knowledge-base-test-6575574
-경로: {cognito_sub}/history/{년}/{월}/{일}/image_{timestamp}.png
+Image Generator Tools - boto3 기반 직접 AWS 호출
+TypeScript 서비스 없이 독립 실행
 """
 
 import os
@@ -16,16 +15,22 @@ from datetime import datetime
 
 import boto3
 
+from agent.utils.secrets import get_config
+
 logger = logging.getLogger(__name__)
 
 # ============================================================================
 # 설정
 # ============================================================================
 
-NOVA_CANVAS_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "amazon.nova-canvas-v1:0")
-CLAUDE_MODEL_ID = os.getenv("BEDROCK_LLM_MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-S3_BUCKET = os.getenv("KNOWLEDGE_BASE_BUCKET", "knowledge-base-test-6575574")
+# 설정 로드
+config = get_config()
+
+# Nova Canvas 설정
+NOVA_CANVAS_MODEL_ID = config.get("BEDROCK_NOVA_CANVAS_MODEL_ID", "amazon.nova-canvas-v1:0")
+CLAUDE_MODEL_ID = config.get("BEDROCK_LLM_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0")
+AWS_REGION = config.get("AWS_REGION", os.getenv("AWS_REGION", "us-east-1"))
+S3_BUCKET = config.get("KNOWLEDGE_BASE_BUCKET", os.getenv("KNOWLEDGE_BASE_BUCKET", "knowledge-base-test-6575574"))
 
 # 이미지 생성 설정
 IMAGE_CONFIG = {

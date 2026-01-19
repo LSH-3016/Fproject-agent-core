@@ -11,6 +11,24 @@ import os
 
 # orchestrator import
 sys.path.insert(0, os.path.dirname(__file__))
+
+# 시작 시 설정 로드 및 검증
+print("=" * 80)
+print("🔧 Agent Core Runtime 초기화 중...")
+print("=" * 80)
+
+try:
+    from utils.secrets import get_config
+    config = get_config()
+    print(f"✅ 설정 로드 완료")
+    print(f"   - AWS Region: {config.get('AWS_REGION')}")
+    print(f"   - Knowledge Base ID: {config.get('KNOWLEDGE_BASE_ID', 'N/A')}")
+    print(f"   - Claude Model: {config.get('BEDROCK_CLAUDE_MODEL_ID', 'N/A')[:50]}...")
+    print(f"   - Nova Canvas Model: {config.get('BEDROCK_NOVA_CANVAS_MODEL_ID', 'N/A')}")
+except Exception as e:
+    print(f"⚠️  설정 로드 실패: {str(e)}")
+    print(f"⚠️  일부 기능이 제한될 수 있습니다.")
+
 from orchestrator.orchestra_agent import orchestrate_request
 
 app = FastAPI(title="Diary Orchestrator Agent")
@@ -33,7 +51,7 @@ async def invocations(request: Request):
         body = await request.json()
         
         print(f"[DEBUG] ========== Invocations 시작 ==========")
-        print(f"[DEBUG] Request body: {json.dumps(body, ensure_ascii=False)}")
+        print(f"[DEBUG] Request body: {json.dumps(body, ensure_ascii=False)[:200]}...")
         
         # 파라미터 추출
         user_input = body.get('content') or body.get('inputText') or body.get('input') or body.get('user_input')
@@ -53,7 +71,7 @@ async def invocations(request: Request):
             )
         
         print(f"[DEBUG] Extracted parameters:")
-        print(f"[DEBUG]   user_input: {user_input}")
+        print(f"[DEBUG]   user_input: {user_input[:100]}..." if len(str(user_input)) > 100 else f"[DEBUG]   user_input: {user_input}")
         print(f"[DEBUG]   user_id: {user_id}")
         print(f"[DEBUG]   current_date: {current_date}")
         
@@ -66,14 +84,15 @@ async def invocations(request: Request):
             temperature=temperature
         )
         
-        print(f"[DEBUG] Result: {json.dumps(result, ensure_ascii=False)}")
+        print(f"[DEBUG] Result type: {result.get('type', 'unknown')}")
         print(f"[DEBUG] ========== Invocations 완료 ==========")
         
         return JSONResponse(content=result)
         
     except Exception as e:
         print(f"[ERROR] ========== Invocations 실패 ==========")
-        print(f"[ERROR] {str(e)}")
+        print(f"[ERROR] Exception type: {type(e).__name__}")
+        print(f"[ERROR] Exception message: {str(e)}")
         import traceback
         traceback.print_exc()
         
@@ -105,3 +124,4 @@ if __name__ == "__main__":
         port=8080,
         log_level="info"
     )
+

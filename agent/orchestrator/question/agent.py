@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import sys
 from typing import Any, Dict, List
 
 from strands import Agent, tool
@@ -15,20 +14,22 @@ try:
     # KNOWLEDGE_BASE_ID는 필수값
     knowledge_base_id = config.get('KNOWLEDGE_BASE_ID', '').strip()
     if not knowledge_base_id:
-        print("❌ CRITICAL ERROR: KNOWLEDGE_BASE_ID가 비어있습니다!")
+        print("❌ ERROR: KNOWLEDGE_BASE_ID가 비어있습니다!")
         print("❌ Secrets Manager의 'agent-core-secret'에 KNOWLEDGE_BASE_ID를 설정해주세요.")
-        sys.exit(1)
+        # sys.exit 대신 경고만 출력 (런타임 오류 방지)
+        knowledge_base_id = 'MISSING'
     
     os.environ['KNOWLEDGE_BASE_ID'] = knowledge_base_id
     os.environ['AWS_REGION'] = config.get('AWS_REGION', 'us-east-1')
     
-    print(f"✅ Knowledge Base ID 로드 완료: {knowledge_base_id}")
-    print(f"✅ AWS Region: {os.environ['AWS_REGION']}")
+    print(f"✅ Question Agent - Knowledge Base ID 로드: {knowledge_base_id}")
+    print(f"✅ Question Agent - AWS Region: {os.environ['AWS_REGION']}")
     
 except Exception as e:
-    print(f"❌ CRITICAL ERROR: 설정을 가져올 수 없습니다: {str(e)}")
-    print("❌ Secrets Manager 접근 권한을 확인하거나 환경변수를 설정해주세요.")
-    sys.exit(1)
+    print(f"❌ ERROR: Question Agent 설정 로드 실패: {str(e)}")
+    print("❌ 기본값으로 fallback합니다.")
+    os.environ['KNOWLEDGE_BASE_ID'] = os.environ.get('KNOWLEDGE_BASE_ID', 'MISSING')
+    os.environ['AWS_REGION'] = os.environ.get('AWS_REGION', 'us-east-1')
 
 RESPONSE_SYSTEM_PROMPT = """
     당신은 일기를 분석하여 고객의 질문에 답변하는 AI 어시스턴트입니다.

@@ -50,6 +50,7 @@ EXECUTION_ROLE = config.get('IAM_ROLE_ARN', '').strip()
 
 # Knowledge Base 설정
 KNOWLEDGE_BASE_ID = config.get('KNOWLEDGE_BASE_ID', '').strip()
+KNOWLEDGE_BASE_BUCKET = config.get('KNOWLEDGE_BASE_BUCKET', '').strip()
 BEDROCK_MODEL_ARN = config.get('BEDROCK_MODEL_ARN', '').strip()
 BEDROCK_CLAUDE_MODEL_ID = config.get('BEDROCK_CLAUDE_MODEL_ID', '').strip()
 BEDROCK_NOVA_CANVAS_MODEL_ID = config.get('BEDROCK_NOVA_CANVAS_MODEL_ID', '').strip()
@@ -79,36 +80,32 @@ if not EXECUTION_ROLE:
 if not KNOWLEDGE_BASE_ID:
     print("⚠️  경고: KNOWLEDGE_BASE_ID가 비어있습니다.")
 
+if not KNOWLEDGE_BASE_BUCKET:
+    print("⚠️  경고: KNOWLEDGE_BASE_BUCKET이 비어있습니다.")
+
 print(f"\n✅ Execution Role: {EXECUTION_ROLE[:50]}...")
 print(f"✅ Knowledge Base ID: {KNOWLEDGE_BASE_ID}")
+print(f"✅ Knowledge Base Bucket: {KNOWLEDGE_BASE_BUCKET}")
 
 # Bedrock AgentCore 클라이언트
 client = boto3.client('bedrock-agentcore-control', region_name=region)
 
-# 환경변수 구성
+# 환경변수 구성 (최소한만 설정, 나머지는 런타임에서 Secrets Manager 사용)
 environment_variables = {
     'AWS_REGION': region,
+    'SECRET_NAME': 'agent-core-secret',  # Secrets Manager 이름만 전달
 }
 
-# 선택적 환경변수 추가
-if KNOWLEDGE_BASE_ID:
-    environment_variables['KNOWLEDGE_BASE_ID'] = KNOWLEDGE_BASE_ID
-if BEDROCK_MODEL_ARN:
-    environment_variables['BEDROCK_MODEL_ARN'] = BEDROCK_MODEL_ARN
-if BEDROCK_CLAUDE_MODEL_ID:
-    environment_variables['BEDROCK_CLAUDE_MODEL_ID'] = BEDROCK_CLAUDE_MODEL_ID
-if BEDROCK_NOVA_CANVAS_MODEL_ID:
-    environment_variables['BEDROCK_NOVA_CANVAS_MODEL_ID'] = BEDROCK_NOVA_CANVAS_MODEL_ID
-if BEDROCK_LLM_MODEL_ID:
-    environment_variables['BEDROCK_LLM_MODEL_ID'] = BEDROCK_LLM_MODEL_ID
+# KNOWLEDGE_BASE_BUCKET은 image_generator에서 필요하므로 환경변수로도 설정
+if KNOWLEDGE_BASE_BUCKET:
+    environment_variables['KNOWLEDGE_BASE_BUCKET'] = KNOWLEDGE_BASE_BUCKET
 
 print(f"\n환경변수 설정 ({len(environment_variables)}개):")
-for key in sorted(environment_variables.keys()):
-    value = environment_variables[key]
-    if 'ARN' in key or 'ID' in key:
-        print(f"  ✓ {key}: {value[:30]}..." if len(value) > 30 else f"  ✓ {key}: {value}")
-    else:
-        print(f"  ✓ {key}: {value}")
+print(f"  ✓ AWS_REGION: {region}")
+print(f"  ✓ SECRET_NAME: agent-core-secret")
+if KNOWLEDGE_BASE_BUCKET:
+    print(f"  ✓ KNOWLEDGE_BASE_BUCKET: {KNOWLEDGE_BASE_BUCKET}")
+print(f"\n💡 나머지 설정은 런타임에서 Secrets Manager에서 로드됩니다.")
 
 # Bedrock AgentCore 클라이언트
 client = boto3.client('bedrock-agentcore-control', region_name=region)
@@ -208,10 +205,8 @@ try:
     print(f"Network Mode: PUBLIC (VPC 사용 안 함)")
     print(f"\n환경변수:")
     for key, value in environment_variables.items():
-        if 'ARN' in key or 'ID' in key:
-            print(f"  - {key}: {value[:30]}..." if len(value) > 30 else f"  - {key}: {value}")
-        else:
-            print(f"  - {key}: {value}")
+        print(f"  - {key}: {value}")
+    print(f"\n💡 런타임 설정은 Secrets Manager '{environment_variables.get('SECRET_NAME')}'에서 로드됩니다.")
     print("=" * 60)
     
 except Exception as e:

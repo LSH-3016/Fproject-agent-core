@@ -150,6 +150,7 @@ image_generator_agent = Agent(
 )
 
 
+@tool
 def run_image_generator(
     request: str, 
     user_id: str = None, 

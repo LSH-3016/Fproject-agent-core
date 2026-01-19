@@ -144,6 +144,7 @@ weekly_report_agent = Agent(
 )
 
 
+@tool
 def run_weekly_report(
     request: str,
     user_id: str = None,

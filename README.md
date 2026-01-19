@@ -201,24 +201,23 @@ https://github.com/YOUR_USERNAME/YOUR_REPO/actions
 
 ## 환경 설정
 
-### Secrets Manager 구조
+모든 설정은 AWS Secrets Manager에서 관리됩니다.
+
+### Secrets Manager (`agent-core-secret`)
 ```json
 {
-  "KNOWLEDGE_BASE_ID": "your-kb-id",
-  "KNOWLEDGE_BASE_BUCKET": "your-s3-bucket",
+  "KNOWLEDGE_BASE_ID": "LOCNRTBMNB",
+  "KNOWLEDGE_BASE_BUCKET": "knowledge-base-test-6575574",
   "AWS_REGION": "us-east-1",
-  "BEDROCK_MODEL_ARN": "arn:aws:bedrock:...",
-  "BEDROCK_MODEL_ID": "amazon.nova-canvas-v1:0",
-  "BEDROCK_LLM_MODEL_ID": "us.anthropic.claude-sonnet-4-20250514-v1:0",
-  "IAM_ROLE_ARN": "arn:aws:iam::...:role/...",
-  "DB_HOST": "your-rds-endpoint",
-  "DB_PORT": "5432",
-  "DB_NAME": "postgres",
-  "DB_USER": "postgres",
-  "DB_PASSWORD": "your-password",
-  "API_BASE_URL": "https://api.aws11.shop"
+  "BEDROCK_MODEL_ARN": "arn:aws:bedrock:us-east-1:...",
+  "IAM_ROLE_ARN": "arn:aws:iam::...",
+  "BEDROCK_CLAUDE_MODEL_ID": "arn:aws:bedrock:us-east-1:...",
+  "BEDROCK_NOVA_CANVAS_MODEL_ID": "amazon.nova-canvas-v1:0",
+  "BEDROCK_LLM_MODEL_ID": "us.anthropic.claude-sonnet-4-20250514-v1:0"
 }
 ```
+
+자세한 내용은 [SECRETS_MANAGER_SETUP.md](./SECRETS_MANAGER_SETUP.md) 참조
 
 ## 기술 스택
 
