@@ -11,13 +11,8 @@ from .agent import (
     image_generator_agent,
     run_image_generator,
     generate_image_from_text,
-    generate_image_for_history,
-    preview_image,
-    confirm_and_upload_image,
-    batch_generate_images,
-    get_histories_without_image,
+    upload_image_to_s3,
     build_prompt_from_text,
-    get_history_by_id,
     health_check
 )
 
@@ -26,12 +21,7 @@ __all__ = [
     "image_generator_agent",
     "run_image_generator",
     "generate_image_from_text",
-    "generate_image_for_history",
-    "preview_image",
-    "confirm_and_upload_image",
-    "batch_generate_images",
-    "get_histories_without_image",
+    "upload_image_to_s3",
     "build_prompt_from_text",
-    "get_history_by_id",
     "health_check"
 ]
