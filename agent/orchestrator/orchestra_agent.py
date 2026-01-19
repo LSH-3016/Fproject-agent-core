@@ -158,7 +158,7 @@ def orchestrate_request(
         user_input (str): 사용자 입력 데이터
         user_id (Optional[str]): 사용자 ID (Knowledge Base 검색 필터용)
         current_date (Optional[str]): 현재 날짜 (검색 컨텍스트용)
-        request_type (Optional[str]): 요청 타입 ('summarize' 또는 'question'). 
+        request_type (Optional[str]): 요청 타입 ('summarize', 'question', 'image', 'report'). 
                                        None이면 orchestrator가 자동 판단
         temperature (Optional[float]): summarize agent용 temperature 파라미터 (0.0 ~ 1.0)
         text (Optional[str]): 이미지 생성용 일기 텍스트
@@ -172,7 +172,132 @@ def orchestrate_request(
             - content: 생성된 내용 (data인 경우 빈 문자열)
             - message: 응답 메시지
     """
-
+    
+    print(f"[DEBUG] ========== orchestrate_request 시작 ==========")
+    print(f"[DEBUG] request_type: {request_type}")
+    print(f"[DEBUG] user_input: {user_input[:100]}...")
+    
+    # ============================================================================
+    # DIRECT ROUTING: request_type이 명시된 경우 AI 없이 직접 라우팅
+    # ============================================================================
+    if request_type:
+        print(f"[DEBUG] ========== DIRECT ROUTING ==========")
+        print(f"[DEBUG] request_type: {request_type}")
+        
+        try:
+            if request_type == "image":
+                # 이미지 생성 직접 호출 (Orchestrator AI 우회)
+                print(f"[DEBUG] request_type=image 감지, run_image_generator 직접 호출")
+                print(f"[DEBUG]   user_input: {user_input[:100]}...")
+                print(f"[DEBUG]   text: {text[:50] if text else None}...")
+                print(f"[DEBUG]   user_id: {user_id}")
+                print(f"[DEBUG]   image_base64: {'<provided>' if image_base64 else None}")
+                print(f"[DEBUG]   record_date: {record_date}")
+                
+                result = run_image_generator(
+                    request=user_input,
+                    user_id=user_id,
+                    text=text,
+                    image_base64=image_base64,
+                    record_date=record_date
+                )
+                print(f"[DEBUG] run_image_generator 결과: {result}")
+                
+                # OrchestratorResult 형식으로 변환
+                if result.get("success"):
+                    return {
+                        "type": "image",
+                        "content": result.get("response", ""),
+                        "message": "이미지가 생성되었습니다."
+                    }
+                else:
+                    return {
+                        "type": "image",
+                        "content": "",
+                        "message": result.get("error", "이미지 생성 중 오류가 발생했습니다.")
+                    }
+            
+            elif request_type == "question":
+                # 질문 답변 직접 호출 (Orchestrator AI 우회)
+                print(f"[DEBUG] request_type=question 감지, generate_auto_response 직접 호출")
+                print(f"[DEBUG]   question: {user_input[:100]}...")
+                print(f"[DEBUG]   user_id: {user_id}")
+                print(f"[DEBUG]   current_date: {current_date}")
+                
+                result = generate_auto_response(
+                    question=user_input,
+                    user_id=user_id,
+                    current_date=current_date
+                )
+                print(f"[DEBUG] generate_auto_response 결과: {result}")
+                
+                return {
+                    "type": "answer",
+                    "content": result.get("response", ""),
+                    "message": "질문에 대한 답변입니다."
+                }
+            
+            elif request_type == "summarize":
+                # 일기 생성 직접 호출 (Orchestrator AI 우회)
+                print(f"[DEBUG] request_type=summarize 감지, generate_auto_summarize 직접 호출")
+                print(f"[DEBUG]   content: {user_input[:100]}...")
+                print(f"[DEBUG]   temperature: {temperature}")
+                
+                result = generate_auto_summarize(
+                    content=user_input,
+                    temperature=temperature
+                )
+                print(f"[DEBUG] generate_auto_summarize 결과: {result}")
+                
+                return {
+                    "type": "diary",
+                    "content": result.get("response", ""),
+                    "message": "일기가 생성되었습니다."
+                }
+            
+            elif request_type == "report":
+                # 주간 리포트 직접 호출 (Orchestrator AI 우회)
+                print(f"[DEBUG] request_type=report 감지, run_weekly_report 직접 호출")
+                print(f"[DEBUG]   request: {user_input[:100]}...")
+                print(f"[DEBUG]   user_id: {user_id}")
+                
+                result = run_weekly_report(
+                    request=user_input,
+                    user_id=user_id
+                )
+                print(f"[DEBUG] run_weekly_report 결과: {result}")
+                
+                if result.get("success"):
+                    return {
+                        "type": "report",
+                        "content": result.get("response", ""),
+                        "message": "리포트가 생성되었습니다."
+                    }
+                else:
+                    return {
+                        "type": "report",
+                        "content": "",
+                        "message": result.get("error", "리포트 생성 중 오류가 발생했습니다.")
+                    }
+            
+            else:
+                print(f"[WARNING] Unknown request_type: {request_type}, falling back to AI routing")
+        
+        except Exception as e:
+            print(f"[ERROR] Direct routing failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "type": "error",
+                "content": "",
+                "message": f"요청 처리 중 오류가 발생했습니다: {str(e)}"
+            }
+    
+    # ============================================================================
+    # AI ROUTING: request_type이 None인 경우에만 AI가 판단
+    # ============================================================================
+    print(f"[DEBUG] Using AI routing (request_type is None)")
+    
     # 각 요청마다 새로운 Agent 생성
     orchestrator_agent = Agent(
         model=BEDROCK_MODEL_ARN,
@@ -190,7 +315,7 @@ def orchestrate_request(
 사용자 요청을 분석하고 적절한 tool을 호출하세요.
 
 <user_input>{user_input}</user_input>
-<request_type>{request_type if request_type else '자동 판단'}</request_type>
+<request_type>자동 판단</request_type>
 """
     
     # user_id 추가 (중요: tool 호출 시 반드시 전달)
@@ -211,10 +336,9 @@ def orchestrate_request(
     if record_date:
         prompt += f"\n<record_date>{record_date}</record_date>\n⚠️ 중요: run_image_generator 호출 시 이 record_date를 반드시 전달하세요!"
     
-    # summarize 요청인 경우 temperature 정보 추가
-    if request_type == "summarize" or request_type is None:
-        if temperature is not None:
-            prompt += f"\n<temperature>{temperature}</temperature>"
+    # temperature 정보 추가
+    if temperature is not None:
+        prompt += f"\n<temperature>{temperature}</temperature>"
     
     orchestrator_agent(prompt)
 
@@ -230,4 +354,5 @@ def orchestrate_request(
     else:
         result_dict = result
 
+    print(f"[DEBUG] ========== orchestrate_request 완료 ==========")
     return result_dict
