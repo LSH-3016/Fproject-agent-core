@@ -1,17 +1,30 @@
-# 로컬 개발 및 배포 스크립트용 의존성
-# Lambda 런타임용은 requirements-lambda.txt 참조
+# Agent Core Runtime 의존성
+# Docker 컨테이너로 배포됨 (Lambda 아님)
 
 # AWS SDK
-boto3>=1.34.0
-botocore>=1.34.0
+boto3>=1.35.0
+botocore>=1.35.0
 
 # Strands Agents
-strands-agents
+strands-agents>=0.1.0
 strands-agents-tools
 
 # Core dependencies
 pydantic>=2.0.0
 pyyaml
 
+# HTTP Client (API 호출용 - weekly_report)
+httpx>=0.26.0
+
+# Database (image_generator)
+psycopg2-binary>=2.9.9
+
+# Environment
+python-dotenv>=1.0.0
+
 # Agent Core (배포용)
 bedrock-agentcore-starter-toolkit
+
+# FastAPI (server.py)
+fastapi
+uvicorn

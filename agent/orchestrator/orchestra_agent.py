@@ -10,6 +10,8 @@ from strands import Agent
 
 from .summarize.agent import generate_auto_summarize
 from .question.agent import generate_auto_response
+from .image_generator.agent import run_image_generator
+from .weekly_report.agent import run_weekly_report
 
 # Secrets Manager에서 설정 가져오기
 try:
@@ -36,6 +38,7 @@ logging.basicConfig(
     format="%(levelname)s | %(name)s | %(message)s", handlers=[logging.StreamHandler()]
 )
 
+
 ORCHESTRATOR_PROMPT = """
 당신은 AI의 워크플로우를 관리하는 오케스트레이터입니다.
 사용자가 입력하는 데이터를 기반으로 다음 중 가장 적절한 처리 방법을 선택해주세요.
@@ -52,9 +55,28 @@ ORCHESTRATOR_PROMPT = """
      * user_id: 사용자 ID (제공된 경우 반드시 전달)
      * current_date: 현재 날짜 (제공된 경우 반드시 전달)
    - 응답 형식: {"type": "answer", "content": "답변 내용", "message": "질문에 대한 답변입니다."}
-   - **중요**: user_id와 current_date가 제공되면 반드시 tool 호출 시 함께 전달해야 합니다
 
-3. 데이터 그대로 반환 (no_processing)
+3. run_image_generator: 이미지 생성 관련 모든 작업 처리
+   - 사용 조건: "이미지 생성", "사진 만들어줘", "미리보기", "배치 생성" 등
+   - **반드시 전달해야 할 파라미터:**
+     * request: 사용자 요청 (자연어)
+     * history_id: 히스토리 ID (제공된 경우)
+     * text: 일기 텍스트 (제공된 경우)
+   - 응답 형식: {"type": "image", "content": "이미지 생성 결과", "message": "이미지가 생성되었습니다."}
+   - 내부에서 자동으로 적절한 작업 선택 (생성, 미리보기, 배치 등)
+
+4. run_weekly_report: 주간 리포트 관련 모든 작업 처리
+   - 사용 조건: "주간 리포트", "이번 주 요약", "리포트 목록", "리포트 조회" 등
+   - **반드시 전달해야 할 파라미터:**
+     * request: 사용자 요청 (자연어)
+     * user_id: 사용자 ID (제공된 경우)
+     * start_date: 시작일 (제공된 경우)
+     * end_date: 종료일 (제공된 경우)
+     * report_id: 리포트 ID (제공된 경우)
+   - 응답 형식: {"type": "report", "content": "리포트 내용", "message": "리포트가 생성되었습니다."}
+   - 내부에서 자동으로 적절한 작업 선택 (생성, 목록, 조회 등)
+
+5. 데이터 그대로 반환 (no_processing)
    - 사용 조건: 단순 데이터 입력, 저장 요청, 특별한 처리가 필요 없는 경우
    - 예시: "오늘 영화 봤어", "점심에 파스타 먹었어", "운동 30분 했어"
    - 응답 형식: {"type": "data", "content": "", "message": "메시지가 저장되었습니다."}
@@ -63,30 +85,39 @@ ORCHESTRATOR_PROMPT = """
 
 <작업순서>
 1. 사용자의 요청 유형을 판단합니다:
-   - 질문 형태인가? (질문, 조회, "~했어?", "~뭐야?") → generate_auto_response → type: "answer"
-   - 일기 생성 요청인가? (일기 작성, 요약 생성) → generate_auto_summarize → type: "diary"
-   - 단순 데이터 입력인가? (사실 진술, 활동 기록) → no_processing → type: "data"
+   - 질문 형태인가? → generate_auto_response → type: "answer"
+   - 일기 생성 요청인가? → generate_auto_summarize → type: "diary"
+   - 이미지 관련 요청인가? → run_image_generator → type: "image"
+   - 주간 리포트 요청인가? → run_weekly_report → type: "report"
+   - 단순 데이터 입력인가? → no_processing → type: "data"
 
 2. 질문이면 generate_auto_response tool을 호출합니다
    - question 파라미터: user_input 전체를 전달
-   - user_id 파라미터: 제공된 user_id를 반드시 전달 (없으면 생략)
-   - current_date 파라미터: 제공된 current_date를 반드시 전달 (없으면 생략)
-   - tool 결과의 "response" 값을 content에 담고, type은 "answer", message는 "질문에 대한 답변입니다."
+   - user_id, current_date: 제공된 경우 반드시 전달
 
 3. 일기 생성이면 generate_auto_summarize tool을 호출합니다
-   - tool 결과를 content에 담고, type은 "diary", message는 "일기가 생성되었습니다."
 
-4. 단순 데이터 입력이면 tool을 사용하지 않습니다
+4. 이미지 요청이면 run_image_generator tool을 호출합니다
+   - request 파라미터: user_input 전체를 전달
+   - history_id, text: 제공된 경우 전달
+   - 내부 Agent가 자동으로 적절한 작업 선택
+
+5. 리포트 요청이면 run_weekly_report tool을 호출합니다
+   - request 파라미터: user_input 전체를 전달
+   - user_id, start_date, end_date, report_id: 제공된 경우 전달
+   - 내부 Agent가 자동으로 적절한 작업 선택
+
+6. 단순 데이터 입력이면 tool을 사용하지 않습니다
    - type: "data", content: "", message: "메시지가 저장되었습니다."
 
-5. tool 결과 처리:
-   - tool 결과가 딕셔너리 형태면 "response" 키의 값을 추출하여 content에 담습니다
+7. tool 결과 처리:
+   - tool 결과를 적절히 content에 담습니다
    - no_processing인 경우 content는 빈 문자열("")입니다
 </작업순서>
 
 <응답 형식>
 반드시 다음 형식으로 응답하세요:
-- type: "data", "answer", "diary" 중 하나
+- type: "data", "answer", "diary", "image", "report" 중 하나
 - content: 생성된 내용 (data인 경우 빈 문자열)
 - message: 적절한 응답 메시지
 </응답 형식>
@@ -105,7 +136,7 @@ ORCHESTRATOR_PROMPT = """
 class OrchestratorResult(BaseModel):
     """Orchestrator result."""
 
-    type: str = Field(description="응답 타입: data, answer, 또는 diary")
+    type: str = Field(description="응답 타입: data, answer, diary, image, 또는 report")
     content: str = Field(description="생성된 결과 내용")
     message: str = Field(description="응답 메시지")
 
@@ -130,7 +161,8 @@ def orchestrate_request(
 
     Returns:
         Dict[str, Any]: 처리 결과
-            - type: "data" (데이터 저장), "answer" (질문 답변), "diary" (일기 생성)
+            - type: "data" (데이터 저장), "answer" (질문 답변), "diary" (일기 생성), 
+                    "image" (이미지 생성), "report" (주간 리포트)
             - content: 생성된 내용 (data인 경우 빈 문자열)
             - message: 응답 메시지
     """
@@ -141,6 +173,8 @@ def orchestrate_request(
         tools=[
             generate_auto_summarize,
             generate_auto_response,
+            run_image_generator,
+            run_weekly_report,
         ],
         system_prompt=ORCHESTRATOR_PROMPT,
     )

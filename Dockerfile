@@ -13,11 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --upgrade pip
 
 # requirements 복사 및 의존성 설치
-COPY requirements-lambda.txt .
-RUN pip install --no-cache-dir -r requirements-lambda.txt
-
-# FastAPI와 uvicorn 추가 설치
-RUN pip install --no-cache-dir fastapi uvicorn[standard]
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사
 COPY agent/ /app/

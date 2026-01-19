@@ -57,7 +57,7 @@ async def invocations(request: Request):
         print(f"[DEBUG]   user_id: {user_id}")
         print(f"[DEBUG]   current_date: {current_date}")
         
-        # orchestrator 실행
+        # orchestrator 실행 - 모든 요청을 orchestrator가 처리
         result = orchestrate_request(
             user_input=user_input,
             user_id=user_id,
