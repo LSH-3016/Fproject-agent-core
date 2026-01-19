@@ -16,13 +16,17 @@ from .tools import (
     create_report as _create_report,
     check_report_status as _check_report_status
 )
+from agent.utils.secrets import get_config
+
+# 설정 로드
+config = get_config()
 
 # AWS 설정
-AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+AWS_REGION = config.get("AWS_REGION", os.environ.get("AWS_REGION", "us-east-1"))
 
 # Claude 모델 (에이전트 추론용)
 model = BedrockModel(
-    model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    model_id=config.get("BEDROCK_CLAUDE_MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"),
     region_name=AWS_REGION
 )
 

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 from typing import Any, Dict, List
 
 from strands import Agent, tool
@@ -8,19 +9,26 @@ from strands_tools import retrieve
 
 # Secrets Manager에서 설정 가져오기
 try:
-    from ..utils.secrets import get_config
+    from agent.utils.secrets import get_config
     config = get_config()
-    os.environ['KNOWLEDGE_BASE_ID'] = config.get('KNOWLEDGE_BASE_ID', '')
+    
+    # KNOWLEDGE_BASE_ID는 필수값
+    knowledge_base_id = config.get('KNOWLEDGE_BASE_ID', '').strip()
+    if not knowledge_base_id:
+        print("❌ CRITICAL ERROR: KNOWLEDGE_BASE_ID가 비어있습니다!")
+        print("❌ Secrets Manager의 'agent-core-secret'에 KNOWLEDGE_BASE_ID를 설정해주세요.")
+        sys.exit(1)
+    
+    os.environ['KNOWLEDGE_BASE_ID'] = knowledge_base_id
     os.environ['AWS_REGION'] = config.get('AWS_REGION', 'us-east-1')
+    
+    print(f"✅ Knowledge Base ID 로드 완료: {knowledge_base_id}")
+    print(f"✅ AWS Region: {os.environ['AWS_REGION']}")
+    
 except Exception as e:
-    print(f"⚠️  설정을 가져올 수 없습니다: {str(e)}")
-    # ========================================
-    # ⚠️ 환경 변수 설정 - 실제 값으로 수정하세요
-    # ========================================
-    # TODO: 실제 Knowledge Base ID로 교체
-    os.environ['KNOWLEDGE_BASE_ID'] = os.environ.get('KNOWLEDGE_BASE_ID', '<your-knowledge-base-id>')
-    # TODO: 실제 AWS Region으로 교체
-    os.environ['AWS_REGION'] = os.environ.get('AWS_REGION', 'us-east-1')
+    print(f"❌ CRITICAL ERROR: 설정을 가져올 수 없습니다: {str(e)}")
+    print("❌ Secrets Manager 접근 권한을 확인하거나 환경변수를 설정해주세요.")
+    sys.exit(1)
 
 RESPONSE_SYSTEM_PROMPT = """
     당신은 일기를 분석하여 고객의 질문에 답변하는 AI 어시스턴트입니다.
@@ -80,15 +88,16 @@ def generate_auto_response(question: str, user_id: str = None, current_date: str
     print(f"[DEBUG] user_id: {user_id}")
     print(f"[DEBUG] current_date: {current_date}")
     
-    # 환경변수 확인
+    # 환경변수 확인 (이미 모듈 로드 시 검증되었지만 재확인)
     kb_id = os.environ.get('KNOWLEDGE_BASE_ID', '')
     aws_region = os.environ.get('AWS_REGION', '')
     print(f"[DEBUG] KNOWLEDGE_BASE_ID from env: {kb_id}")
     print(f"[DEBUG] AWS_REGION from env: {aws_region}")
     
+    # 이 시점에서는 이미 모듈 로드 시 검증되었으므로 비어있을 수 없음
     if not kb_id:
-        print(f"[ERROR] KNOWLEDGE_BASE_ID가 설정되지 않았습니다!")
-        return {"response": "Knowledge Base 설정이 올바르지 않습니다. 관리자에게 문의하세요."}
+        print(f"[ERROR] CRITICAL: KNOWLEDGE_BASE_ID가 런타임에 비어있습니다!")
+        return {"response": "Knowledge Base 설정 오류. 시스템 관리자에게 문의하세요."}
 
     try:
         # system prompt 구성

@@ -85,4 +85,7 @@ def get_config() -> dict:
             'AWS_REGION': os.environ.get('AWS_REGION', 'us-east-1'),
             'BEDROCK_MODEL_ARN': os.environ.get('BEDROCK_MODEL_ARN', ''),
             'IAM_ROLE_ARN': os.environ.get('IAM_ROLE_ARN', ''),
+            'BEDROCK_CLAUDE_MODEL_ID': os.environ.get('BEDROCK_CLAUDE_MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
+            'BEDROCK_NOVA_CANVAS_MODEL_ID': os.environ.get('BEDROCK_NOVA_CANVAS_MODEL_ID', 'amazon.nova-canvas-v1:0'),
+            'BEDROCK_LLM_MODEL_ID': os.environ.get('BEDROCK_LLM_MODEL_ID', 'us.anthropic.claude-sonnet-4-20250514-v1:0'),
         }
