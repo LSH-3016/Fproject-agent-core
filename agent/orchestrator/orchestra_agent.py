@@ -147,6 +147,9 @@ def orchestrate_request(
     current_date: Optional[str] = None,
     request_type: Optional[str] = None,
     temperature: Optional[float] = None,
+    text: Optional[str] = None,
+    image_base64: Optional[str] = None,
+    record_date: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     사용자 요청을 분석하여 적절한 agent로 라우팅하는 메인 함수
@@ -158,6 +161,9 @@ def orchestrate_request(
         request_type (Optional[str]): 요청 타입 ('summarize' 또는 'question'). 
                                        None이면 orchestrator가 자동 판단
         temperature (Optional[float]): summarize agent용 temperature 파라미터 (0.0 ~ 1.0)
+        text (Optional[str]): 이미지 생성용 일기 텍스트
+        image_base64 (Optional[str]): S3 업로드용 이미지 (base64)
+        record_date (Optional[str]): S3 업로드용 날짜
 
     Returns:
         Dict[str, Any]: 처리 결과
@@ -194,6 +200,16 @@ def orchestrate_request(
     # current_date 추가 (중요: tool 호출 시 반드시 전달)
     if current_date:
         prompt += f"\n<current_date>{current_date}</current_date>\n⚠️ 중요: generate_auto_response 호출 시 이 current_date를 반드시 전달하세요!"
+    
+    # 이미지 생성 관련 파라미터 추가
+    if text:
+        prompt += f"\n<text>{text[:200]}...</text>\n⚠️ 중요: run_image_generator 호출 시 이 text를 반드시 전달하세요!"
+    
+    if image_base64:
+        prompt += f"\n<image_base64>제공됨 (길이: {len(image_base64)})</image_base64>\n⚠️ 중요: run_image_generator 호출 시 이 image_base64를 반드시 전달하세요!"
+    
+    if record_date:
+        prompt += f"\n<record_date>{record_date}</record_date>\n⚠️ 중요: run_image_generator 호출 시 이 record_date를 반드시 전달하세요!"
     
     # summarize 요청인 경우 temperature 정보 추가
     if request_type == "summarize" or request_type is None:

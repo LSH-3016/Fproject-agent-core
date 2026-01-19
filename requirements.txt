@@ -16,9 +16,6 @@ pyyaml
 # HTTP Client (API 호출용 - weekly_report)
 httpx>=0.26.0
 
-# Database (image_generator)
-psycopg2-binary>=2.9.9
-
 # Environment
 python-dotenv>=1.0.0
 
