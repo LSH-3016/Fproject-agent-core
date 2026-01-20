@@ -5,6 +5,11 @@ on:
     branches:
       - main
       - develop
+    paths:
+      - 'agent/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 env:

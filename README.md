@@ -156,6 +156,7 @@ result = json.loads(''.join(content))
 
 ### 필수 IAM 권한
 
+**백엔드 서비스 (Agent 호출용):**
 ```json
 {
   "Version": "2012-10-17",
@@ -164,6 +165,41 @@ result = json.loads(''.join(content))
       "Effect": "Allow",
       "Action": ["bedrock-agentcore:InvokeAgentRuntime"],
       "Resource": "arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht"
+    }
+  ]
+}
+```
+
+**Agent Core Runtime Execution Role:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": "arn:aws:secretsmanager:us-east-1:*:secret:agent-core-secret-*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*",
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["bedrock:Retrieve"],
+      "Resource": "arn:aws:bedrock:us-east-1:*:knowledge-base/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::your-bucket/*"
     }
   ]
 }
