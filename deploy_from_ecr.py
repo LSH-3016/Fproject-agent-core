@@ -40,7 +40,9 @@ account_id = boto_session.client('sts').get_caller_identity()['Account']
 
 # ECR 설정
 ECR_REPOSITORY = "diary-orchestrator-agent"
-IMAGE_TAG = os.environ.get('IMAGE_TAG', 'latest')
+# 항상 latest 태그 사용 (Agent Core Runtime은 이미지 digest로 변경 감지)
+IMAGE_TAG = 'latest'
+print(f"💡 IMAGE_TAG 환경변수 무시, 항상 'latest' 사용")
 
 # Agent 설정
 AGENT_NAME = "diary_orchestrator_agent"

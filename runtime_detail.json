@@ -1,0 +1,30 @@
+{
+    "agentRuntimeArn": "arn:aws:bedrock-agentcore:us-east-1:324547056370:runtime/diary_orchestrator_agent-90S9ctAFht",
+    "agentRuntimeName": "diary_orchestrator_agent",
+    "agentRuntimeId": "diary_orchestrator_agent-90S9ctAFht",
+    "agentRuntimeVersion": "34",
+    "createdAt": "2026-01-18T06:22:10.084302+00:00",
+    "lastUpdatedAt": "2026-01-20T03:16:48.288974+00:00",
+    "roleArn": "arn:aws:iam::324547056370:role/DiaryOrchestratorAgentRole",
+    "networkConfiguration": {
+        "networkMode": "PUBLIC"
+    },
+    "status": "READY",
+    "lifecycleConfiguration": {
+        "idleRuntimeSessionTimeout": 3600,
+        "maxLifetime": 28800
+    },
+    "workloadIdentityDetails": {
+        "workloadIdentityArn": "arn:aws:bedrock-agentcore:us-east-1:324547056370:workload-identity-directory/default/workload-identity/diary_orchestrator_agent-90S9ctAFht"
+    },
+    "agentRuntimeArtifact": {
+        "containerConfiguration": {
+            "containerUri": "324547056370.dkr.ecr.us-east-1.amazonaws.com/diary-orchestrator-agent:8e06f29dcedbcda58e9d90e0b847638b75a15db2"
+        }
+    },
+    "environmentVariables": {
+        "AWS_REGION": "us-east-1",
+        "KNOWLEDGE_BASE_BUCKET": "knowledge-base-test-6575574",
+        "SECRET_NAME": "agent-core-secret"
+    }
+}
