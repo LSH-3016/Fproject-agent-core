@@ -130,10 +130,24 @@ try:
             runtime_arn = existing_runtime['agentRuntimeArn']
             runtime_id = runtime_arn.split('/')[-1]
             
-            # 기존 Runtime 업데이트
-            print(f"\n기존 Runtime 업데이트 중 (ID: {runtime_id})...")
-            response = client.update_agent_runtime(
-                agentRuntimeId=runtime_id,
+            # 🔥 기존 Runtime 삭제 (강제 재생성)
+            print(f"\n🗑️  기존 Runtime 삭제 중 (ID: {runtime_id})...")
+            print(f"💡 이유: update_agent_runtime이 이미지를 제대로 업데이트하지 않음")
+            try:
+                client.delete_agent_runtime(agentRuntimeId=runtime_id)
+                print("✅ Runtime 삭제 완료")
+                
+                # 삭제 완료 대기
+                import time
+                print("⏳ 삭제 완료 대기 중 (10초)...")
+                time.sleep(10)
+            except Exception as delete_error:
+                print(f"⚠️  삭제 실패 (무시하고 계속): {str(delete_error)}")
+            
+            # 새 Runtime 생성
+            print(f"\n🚀 새 Runtime 생성 중...")
+            response = client.create_agent_runtime(
+                agentRuntimeName=AGENT_NAME,
                 agentRuntimeArtifact={
                     'containerConfiguration': {
                         'containerUri': ecr_image_uri
@@ -145,12 +159,12 @@ try:
                 },
                 environmentVariables=environment_variables,
                 lifecycleConfiguration={
-                    'idleRuntimeSessionTimeout': 3600,  # 1시간 (기본 15분에서 증가)
-                    'maxLifetime': 28800  # 8시간
+                    'idleRuntimeSessionTimeout': 3600,
+                    'maxLifetime': 28800
                 }
             )
-            print("✅ Agent Runtime 업데이트 완료!")
-            agent_arn = runtime_arn
+            print("✅ 새 Runtime 생성 완료!")
+            agent_arn = response['agentRuntimeArn']
         else:
             # 새 Runtime 생성 (Public 모드)
             print("\n새 Agent Runtime 생성 중 (Public 모드)...")
