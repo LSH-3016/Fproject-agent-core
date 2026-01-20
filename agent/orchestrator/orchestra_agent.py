@@ -44,12 +44,14 @@ ORCHESTRATOR_PROMPT = """
 사용자가 입력하는 데이터를 기반으로 다음 중 가장 적절한 처리 방법을 선택해주세요.
 
 <처리 방법>
-1. generate_auto_summarize: 사용자의 데이터를 분석하여 일기 생성
-   - 사용 조건: 일기 작성, 일기 생성, 요약 생성 등의 요청
+1. generate_auto_summarize: 사용자가 **명시적으로 일기 작성/생성을 요청**한 경우만
+   - 사용 조건: "일기 써줘", "일기 작성해줘", "요약해줘", "정리해줘" 등 **명령형 요청**
+   - ⚠️ 중요: 단순히 긴 텍스트라고 해서 일기 작성 요청이 아닙니다!
    - 응답 형식: {"type": "diary", "content": "생성된 일기 내용", "message": "일기가 생성되었습니다."}
    
 2. generate_auto_response: 사용자의 질문에 답변을 생성
-   - 사용 조건: 질문, 조회, 검색, "~했어?", "~뭐야?" 등의 질문 형태
+   - 사용 조건: 질문, 조회, 검색, "~했어?", "~뭐야?", "~언제?" 등 **의문형 질문**
+   - ⚠️ 중요: 서술형 문장은 질문이 아닙니다!
    - **반드시 전달해야 할 파라미터:**
      * question: 질문 내용 전체를 문자열로 전달
      * user_id: 사용자 ID (제공된 경우 반드시 전달)
@@ -76,41 +78,52 @@ ORCHESTRATOR_PROMPT = """
    - 응답 형식: {"type": "report", "content": "리포트 내용", "message": "리포트가 생성되었습니다."}
    - 내부에서 자동으로 적절한 작업 선택 (생성, 목록, 조회 등)
 
-5. 데이터 그대로 반환 (no_processing)
-   - 사용 조건: 단순 데이터 입력, 저장 요청, 특별한 처리가 필요 없는 경우
-   - 예시: "오늘 영화 봤어", "점심에 파스타 먹었어", "운동 30분 했어"
+5. 데이터 그대로 반환 (no_processing) - **기본 선택**
+   - 사용 조건: 
+     * 단순 데이터 입력, 저장 요청
+     * 명령형/의문형이 아닌 **모든 서술형 입력**
+     * **길이와 관계없이** 특별한 처리 요청이 없는 경우
+   - 예시: 
+     * 짧은 입력: "오늘 영화 봤어", "점심에 파스타 먹었어"
+     * 긴 입력: "오전 8시에 출근해서... (중략) ...5시에 퇴근했다" (장문의 일기 데이터)
+   - ⚠️ 중요: **의심스러우면 무조건 이 옵션을 선택하세요!**
    - 응답 형식: {"type": "data", "content": "", "message": "메시지가 저장되었습니다."}
    - 이 경우 tool을 사용하지 않고 입력 데이터를 그대로 반환합니다
 </처리 방법>
 
 <작업순서>
-1. 사용자의 요청 유형을 판단합니다:
-   - 질문 형태인가? → generate_auto_response → type: "answer"
-   - 일기 생성 요청인가? → generate_auto_summarize → type: "diary"
-   - 이미지 관련 요청인가? → run_image_generator → type: "image"
-   - 주간 리포트 요청인가? → run_weekly_report → type: "report"
-   - 단순 데이터 입력인가? → no_processing → type: "data"
+1. 사용자의 요청 유형을 **신중하게** 판단합니다:
+   - **의문형 질문**인가? (예: "~했어?", "~뭐야?", "~언제?") → generate_auto_response → type: "answer"
+   - **명령형 일기 작성 요청**인가? (예: "일기 써줘", "요약해줘") → generate_auto_summarize → type: "diary"
+   - **이미지 관련 요청**인가? (예: "이미지 생성", "사진 만들어줘") → run_image_generator → type: "image"
+   - **주간 리포트 요청**인가? (예: "주간 리포트", "이번 주 요약") → run_weekly_report → type: "report"
+   - **위 4가지가 아니면 무조건** → no_processing → type: "data"
 
-2. 질문이면 generate_auto_response tool을 호출합니다
+2. ⚠️ 중요한 판단 기준:
+   - 서술형 문장 (예: "오늘 ~했다", "~를 먹었다") → **무조건 데이터 입력**
+   - 긴 텍스트라고 해서 일기 작성 요청이 아님 → **무조건 데이터 입력**
+   - 의심스러우면 → **무조건 데이터 입력**
+
+3. 질문이면 generate_auto_response tool을 호출합니다
    - question 파라미터: user_input 전체를 전달
    - user_id, current_date: 제공된 경우 반드시 전달
 
-3. 일기 생성이면 generate_auto_summarize tool을 호출합니다
+4. 일기 생성이면 generate_auto_summarize tool을 호출합니다
 
-4. 이미지 요청이면 run_image_generator tool을 호출합니다
+5. 이미지 요청이면 run_image_generator tool을 호출합니다
    - request 파라미터: user_input 전체를 전달
    - history_id, text: 제공된 경우 전달
    - 내부 Agent가 자동으로 적절한 작업 선택
 
-5. 리포트 요청이면 run_weekly_report tool을 호출합니다
+6. 리포트 요청이면 run_weekly_report tool을 호출합니다
    - request 파라미터: user_input 전체를 전달
    - user_id, start_date, end_date, report_id: 제공된 경우 전달
    - 내부 Agent가 자동으로 적절한 작업 선택
 
-6. 단순 데이터 입력이면 tool을 사용하지 않습니다
+7. 단순 데이터 입력이면 tool을 사용하지 않습니다
    - type: "data", content: "", message: "메시지가 저장되었습니다."
 
-7. tool 결과 처리:
+8. tool 결과 처리:
    - tool 결과를 적절히 content에 담습니다
    - no_processing인 경우 content는 빈 문자열("")입니다
 </작업순서>
