@@ -91,12 +91,10 @@ def get_config() -> dict:
     # 여러 가능한 이름을 시도
     possible_secret_names = [
         os.environ.get('SECRET_NAME'),
-        'one-agent-core-secret',  # 실제 Secret 이름
-        'agent-core-secret',       # 기본값
+        'agent-core-secret',       # us-east-1 Secret
+        'one-agent-core-secret',  # ap-northeast-2 Secret (fallback)
     ]
     
-    secret_name = None
-    region_name = os.environ.get('AWS_REGION', 'us-east-1')
     secret_name = None
     region_name = os.environ.get('AWS_REGION', 'us-east-1')
     
