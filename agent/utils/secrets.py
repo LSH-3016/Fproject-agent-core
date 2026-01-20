@@ -106,6 +106,26 @@ def get_config() -> dict:
         if 'AWS_REGION' not in config or not config['AWS_REGION']:
             config['AWS_REGION'] = region_name
         
+        # Model ID에서 'us.' 접두사 제거 (cross-region inference profile 형식 정규화)
+        model_id_keys = ['BEDROCK_CLAUDE_MODEL_ID', 'BEDROCK_LLM_MODEL_ID']
+        for key in model_id_keys:
+            if key in config and config[key]:
+                original_value = config[key]
+                # ARN 형식이면 model ID만 추출
+                if original_value.startswith('arn:aws:bedrock:'):
+                    # arn:aws:bedrock:us-east-1:...:inference-profile/global.anthropic.claude-sonnet-4-5-20250929-v1:0
+                    # → anthropic.claude-sonnet-4-5-20250929-v1:0
+                    if '/global.' in original_value:
+                        config[key] = original_value.split('/global.')[-1]
+                        print(f"[Config] {key}: ARN에서 model ID 추출: {original_value} → {config[key]}")
+                    elif '/' in original_value:
+                        config[key] = original_value.split('/')[-1]
+                        print(f"[Config] {key}: ARN에서 model ID 추출: {original_value} → {config[key]}")
+                # us. 접두사 제거
+                elif config[key].startswith('us.'):
+                    config[key] = config[key].replace('us.', '', 1)
+                    print(f"[Config] {key}: 'us.' 접두사 제거: {original_value} → {config[key]}")
+        
         return config
     except Exception as e:
         print(f"❌ CRITICAL: Secrets Manager에서 설정을 가져올 수 없습니다: {str(e)}")
@@ -120,7 +140,7 @@ def get_config() -> dict:
             'KNOWLEDGE_BASE_BUCKET': os.environ.get('KNOWLEDGE_BASE_BUCKET', ''),
             'BEDROCK_MODEL_ARN': os.environ.get('BEDROCK_MODEL_ARN', ''),
             'IAM_ROLE_ARN': os.environ.get('IAM_ROLE_ARN', ''),
-            'BEDROCK_CLAUDE_MODEL_ID': os.environ.get('BEDROCK_CLAUDE_MODEL_ID', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0'),
+            'BEDROCK_CLAUDE_MODEL_ID': os.environ.get('BEDROCK_CLAUDE_MODEL_ID', 'anthropic.claude-sonnet-4-5-20250929-v1:0'),
             'BEDROCK_NOVA_CANVAS_MODEL_ID': os.environ.get('BEDROCK_NOVA_CANVAS_MODEL_ID', 'amazon.nova-canvas-v1:0'),
-            'BEDROCK_LLM_MODEL_ID': os.environ.get('BEDROCK_LLM_MODEL_ID', 'us.anthropic.claude-sonnet-4-20250514-v1:0'),
+            'BEDROCK_LLM_MODEL_ID': os.environ.get('BEDROCK_LLM_MODEL_ID', 'anthropic.claude-sonnet-4-20250514-v1:0'),
         }

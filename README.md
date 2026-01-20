@@ -206,18 +206,26 @@ https://github.com/YOUR_USERNAME/YOUR_REPO/actions
 ### Secrets Manager (`agent-core-secret`)
 ```json
 {
-  "KNOWLEDGE_BASE_ID": "LOCNRTBMNB",
-  "KNOWLEDGE_BASE_BUCKET": "knowledge-base-test-6575574",
+  "KNOWLEDGE_BASE_ID": "your-kb-id",
+  "KNOWLEDGE_BASE_BUCKET": "your-s3-bucket",
   "AWS_REGION": "us-east-1",
   "BEDROCK_MODEL_ARN": "arn:aws:bedrock:us-east-1:...",
-  "IAM_ROLE_ARN": "arn:aws:iam::...",
-  "BEDROCK_CLAUDE_MODEL_ID": "arn:aws:bedrock:us-east-1:...",
+  "IAM_ROLE_ARN": "arn:aws:iam::...:role/...",
+  "BEDROCK_CLAUDE_MODEL_ID": "anthropic.claude-sonnet-4-5-20250929-v1:0",
   "BEDROCK_NOVA_CANVAS_MODEL_ID": "amazon.nova-canvas-v1:0",
-  "BEDROCK_LLM_MODEL_ID": "us.anthropic.claude-sonnet-4-20250514-v1:0"
+  "BEDROCK_LLM_MODEL_ID": "anthropic.claude-sonnet-4-20250514-v1:0",
+  "DB_HOST": "your-rds-endpoint",
+  "DB_PORT": "5432",
+  "DB_NAME": "postgres",
+  "DB_USER": "postgres",
+  "DB_PASSWORD": "your-password",
+  "API_BASE_URL": "https://api.aws11.shop"
 }
 ```
 
-자세한 내용은 [SECRETS_MANAGER_SETUP.md](./SECRETS_MANAGER_SETUP.md) 참조
+**참고:**
+- Model ID는 `anthropic.`로 시작 (cross-region inference profile의 `us.` 접두사는 자동 제거됨)
+- ARN 형식으로 저장된 경우에도 자동으로 model ID만 추출됨
 
 ## 기술 스택
 
