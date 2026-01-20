@@ -1,0 +1,27 @@
+fix: Agent Core Runtime 500 에러 수정 및 빌드 캐시 비활성화
+
+## 문제
+- Agent Core Runtime에서 500 에러 발생
+- Docker 빌드 캐시로 인해 코드 변경사항이 반영되지 않음
+
+## 수정 사항
+
+### 1. agent/utils/secrets.py
+- 여러 Secret 이름 시도 (agent-core-secret, one-agent-core-secret)
+- 누락된 키 자동 보완 (BEDROCK_CLAUDE_MODEL_ID, BEDROCK_LLM_MODEL_ID 등)
+- Model ID 정규화 강화 (ARN → model ID 추출, us. 접두사 제거)
+
+### 2. agent/orchestrator/orchestra_agent.py
+- 유연한 Model ID 로딩 (BEDROCK_MODEL_ARN 또는 BEDROCK_CLAUDE_MODEL_ID)
+- 최후의 fallback 추가 (기본 모델 ID 사용)
+- 상세한 에러 로깅 (traceback 출력)
+
+### 3. .github/workflows/deploy-to-ecr.yml
+- Docker 빌드 캐시 비활성화 (--no-cache)
+- 모든 배포에서 코드 변경사항이 확실히 반영되도록 보장
+- 빌드 시간은 증가하지만 안정성 향상
+
+## 배포 후 확인
+- Runtime이 새 이미지를 사용하는지 확인
+- 500 에러가 해결되었는지 테스트
+- Secret 로딩 로그 확인

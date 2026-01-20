@@ -46,16 +46,15 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-        echo "🔨 Docker 이미지 빌드 중 (ARM64 아키텍처, 캐시 활성화)..."
+        echo "🔨 Docker 이미지 빌드 중 (ARM64 아키텍처, 캐시 비활성화 - 항상 새로 빌드)..."
         docker buildx create --use --name arm64-builder || docker buildx use arm64-builder
         docker buildx build --platform linux/arm64 \
+          --no-cache \
           -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
           -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-          --cache-from type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache \
-          --cache-to type=registry,ref=$ECR_REGISTRY/$ECR_REPOSITORY:buildcache,mode=max \
           --push .
         
-        echo "✅ ECR 이미지 푸시 완료 (ARM64)"
+        echo "✅ ECR 이미지 푸시 완료 (ARM64, 캐시 없이 새로 빌드됨)"
         echo "Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
     - name: Set up Python
