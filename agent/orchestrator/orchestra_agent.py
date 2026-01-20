@@ -17,18 +17,32 @@ from .weekly_report.agent import run_weekly_report
 try:
     from ..utils.secrets import get_config
     config = get_config()
-    BEDROCK_MODEL_ARN = config.get('BEDROCK_MODEL_ARN', '')
+    
+    # BEDROCK_MODEL_ARN 또는 BEDROCK_CLAUDE_MODEL_ID 사용
+    BEDROCK_MODEL_ARN = (
+        config.get('BEDROCK_MODEL_ARN') or 
+        config.get('BEDROCK_CLAUDE_MODEL_ID') or 
+        os.environ.get('BEDROCK_MODEL_ARN', '')
+    )
+    
     if not BEDROCK_MODEL_ARN:
-        # 환경변수에서 시도
-        BEDROCK_MODEL_ARN = os.environ.get('BEDROCK_MODEL_ARN', '')
-    if not BEDROCK_MODEL_ARN:
-        raise ValueError("BEDROCK_MODEL_ARN이 설정되지 않았습니다.")
+        raise ValueError("BEDROCK_MODEL_ARN 또는 BEDROCK_CLAUDE_MODEL_ID가 설정되지 않았습니다.")
+    
+    print(f"[Orchestra] Model ID: {BEDROCK_MODEL_ARN}")
+    
 except Exception as e:
     print(f"⚠️  설정을 가져올 수 없습니다: {str(e)}")
+    import traceback
+    traceback.print_exc()
+    
     # 환경변수에서 시도
     BEDROCK_MODEL_ARN = os.environ.get('BEDROCK_MODEL_ARN', '')
     if not BEDROCK_MODEL_ARN:
-        raise ValueError("BEDROCK_MODEL_ARN이 설정되지 않았습니다. Secrets Manager 또는 환경변수를 확인하세요.")
+        # 최후의 fallback
+        BEDROCK_MODEL_ARN = 'anthropic.claude-sonnet-4-5-20250929-v1:0'
+        print(f"⚠️  WARNING: 기본 모델 ID 사용: {BEDROCK_MODEL_ARN}")
+    else:
+        print(f"[Orchestra] 환경변수에서 Model ID 가져옴: {BEDROCK_MODEL_ARN}")
 
 # Configure the root strands logger
 logging.getLogger("strands").setLevel(logging.INFO)

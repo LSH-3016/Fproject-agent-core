@@ -88,12 +88,36 @@ def get_config() -> dict:
         설정 딕셔너리
     """
     # Secret 이름 (환경변수 또는 기본값)
-    secret_name = os.environ.get('SECRET_NAME', 'agent-core-secret')
+    # 여러 가능한 이름을 시도
+    possible_secret_names = [
+        os.environ.get('SECRET_NAME'),
+        'one-agent-core-secret',  # 실제 Secret 이름
+        'agent-core-secret',       # 기본값
+    ]
+    
+    secret_name = None
+    region_name = os.environ.get('AWS_REGION', 'us-east-1')
+    secret_name = None
     region_name = os.environ.get('AWS_REGION', 'us-east-1')
     
+    # 여러 Secret 이름을 시도
+    config = None
+    for name in possible_secret_names:
+        if not name:
+            continue
+        try:
+            config = get_secret(name, region_name)
+            secret_name = name
+            print(f"✅ Secrets Manager에서 설정을 가져왔습니다: {secret_name}")
+            break
+        except Exception as e:
+            print(f"⚠️  Secret '{name}' 시도 실패: {str(e)}")
+            continue
+    
+    if not config:
+        raise Exception(f"모든 Secret 이름 시도 실패: {possible_secret_names}")
+    
     try:
-        config = get_secret(secret_name, region_name)
-        print(f"✅ Secrets Manager에서 설정을 가져왔습니다: {secret_name}")
         
         # 필수 키 검증
         required_keys = ['KNOWLEDGE_BASE_ID', 'AWS_REGION']
@@ -107,7 +131,7 @@ def get_config() -> dict:
             config['AWS_REGION'] = region_name
         
         # Model ID에서 'us.' 접두사 제거 (cross-region inference profile 형식 정규화)
-        model_id_keys = ['BEDROCK_CLAUDE_MODEL_ID', 'BEDROCK_LLM_MODEL_ID']
+        model_id_keys = ['BEDROCK_CLAUDE_MODEL_ID', 'BEDROCK_LLM_MODEL_ID', 'BEDROCK_MODEL_ARN']
         for key in model_id_keys:
             if key in config and config[key]:
                 original_value = config[key]
@@ -125,6 +149,28 @@ def get_config() -> dict:
                 elif config[key].startswith('us.'):
                     config[key] = config[key].replace('us.', '', 1)
                     print(f"[Config] {key}: 'us.' 접두사 제거: {original_value} → {config[key]}")
+        
+        # 누락된 키들에 대한 fallback 설정
+        if 'BEDROCK_CLAUDE_MODEL_ID' not in config or not config['BEDROCK_CLAUDE_MODEL_ID']:
+            # BEDROCK_MODEL_ARN에서 추출 시도
+            if 'BEDROCK_MODEL_ARN' in config and config['BEDROCK_MODEL_ARN']:
+                config['BEDROCK_CLAUDE_MODEL_ID'] = config['BEDROCK_MODEL_ARN']
+                print(f"[Config] BEDROCK_CLAUDE_MODEL_ID: BEDROCK_MODEL_ARN에서 복사")
+            else:
+                config['BEDROCK_CLAUDE_MODEL_ID'] = 'anthropic.claude-sonnet-4-5-20250929-v1:0'
+                print(f"[Config] BEDROCK_CLAUDE_MODEL_ID: 기본값 사용")
+        
+        if 'BEDROCK_LLM_MODEL_ID' not in config or not config['BEDROCK_LLM_MODEL_ID']:
+            config['BEDROCK_LLM_MODEL_ID'] = 'anthropic.claude-sonnet-4-20250514-v1:0'
+            print(f"[Config] BEDROCK_LLM_MODEL_ID: 기본값 사용")
+        
+        if 'BEDROCK_NOVA_CANVAS_MODEL_ID' not in config or not config['BEDROCK_NOVA_CANVAS_MODEL_ID']:
+            config['BEDROCK_NOVA_CANVAS_MODEL_ID'] = 'amazon.nova-canvas-v1:0'
+            print(f"[Config] BEDROCK_NOVA_CANVAS_MODEL_ID: 기본값 사용")
+        
+        if 'KNOWLEDGE_BASE_BUCKET' not in config or not config['KNOWLEDGE_BASE_BUCKET']:
+            config['KNOWLEDGE_BASE_BUCKET'] = os.environ.get('KNOWLEDGE_BASE_BUCKET', '')
+            print(f"[Config] KNOWLEDGE_BASE_BUCKET: 환경변수에서 가져옴")
         
         return config
     except Exception as e:
